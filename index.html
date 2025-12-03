@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Waterfall - Hand Tracking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            font-family: Arial, sans-serif;
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background-color: #0a0a0a;
+        }
+
+        /* Loading message */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #4a9eff;
+            font-size: 24px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        /* Instructions overlay */
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            text-align: center;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+
+        #instructions.fade {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="loading">
+        <div>Loading hand tracking...</div>
+        <div style="font-size: 14px; margin-top: 10px;">Please allow camera access</div>
+    </div>
+    <div id="instructions">
+        Move your hands in front of the camera to interact with the waterfall
+    </div>
+
+    <!-- MediaPipe Hands from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+    <script>
+        // ============================================
+        // CONFIGURATION PARAMETERS
+        // Adjust these to customize the waterfall behavior
+        // ============================================
+
+        const CONFIG = {
+            // Particle system
+            PARTICLE_COUNT: 2000,           // Total number of particles in the waterfall
+            PARTICLE_SIZE_MIN: 1,           // Minimum particle size (pixels)
+            PARTICLE_SIZE_MAX: 3,           // Maximum particle size (pixels)
+            PARTICLE_SPEED_MIN: 2,          // Minimum initial fall speed
+            PARTICLE_SPEED_MAX: 5,          // Maximum initial fall speed
+
+            // Physics
+            GRAVITY: 0.15,                  // Downward acceleration per frame
+            VELOCITY_DAMPING: 0.98,         // Velocity damping factor (1 = no damping)
+            MAX_VELOCITY: 15,               // Maximum velocity magnitude
+
+            // Hand interaction
+            HAND_REPULSION_RADIUS: 80,      // Distance (pixels) at which particles start to be affected by hands
+            HAND_FORCE_STRENGTH: 8,         // Strength of the repulsion force
+            HAND_UPWARD_FORCE: 0.3,         // Upward force component (0-1, creates the "flowing up" effect)
+
+            // Visual style
+            PARTICLE_COLOR: '#4a9eff',      // Particle color (CSS color)
+            PARTICLE_OPACITY: 0.6,          // Particle opacity (0-1)
+            TRAIL_EFFECT: true,             // Enable motion blur trail effect
+            TRAIL_ALPHA: 0.15,              // Lower = longer trails (0-1)
+
+            // Hand tracking
+            HAND_CONFIDENCE_THRESHOLD: 0.5, // Minimum confidence for hand detection (0-1)
+        };
+
+        // ============================================
+        // SETUP
+        // ============================================
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const loading = document.getElementById('loading');
+        const instructions = document.getElementById('instructions');
+
+        // Set canvas to full window size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Resize canvas when window resizes
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            // Reset particle positions to avoid clustering
+            particles.forEach(p => {
+                p.x = Math.random() * canvas.width;
+                p.y = Math.random() * canvas.height;
+            });
+        });
+
+        // ============================================
+        // PARTICLE SYSTEM
+        // ============================================
+
+        class Particle {
+            constructor() {
+                this.reset();
+                // Start particles at random heights for initial distribution
+                this.y = Math.random() * canvas.height;
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = -10; // Start just above the visible canvas
+                this.vx = 0; // Velocity X
+                this.vy = CONFIG.PARTICLE_SPEED_MIN + Math.random() *
+                         (CONFIG.PARTICLE_SPEED_MAX - CONFIG.PARTICLE_SPEED_MIN);
+                this.size = CONFIG.PARTICLE_SIZE_MIN + Math.random() *
+                           (CONFIG.PARTICLE_SIZE_MAX - CONFIG.PARTICLE_SIZE_MIN);
+                this.baseX = this.x; // Remember original X position for subtle wave motion
+            }
+
+            update() {
+                // Apply gravity
+                this.vy += CONFIG.GRAVITY;
+
+                // Apply velocity damping (reduces horizontal drift over time)
+                this.vx *= CONFIG.VELOCITY_DAMPING;
+                this.vy *= CONFIG.VELOCITY_DAMPING;
+
+                // Limit maximum velocity
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (speed > CONFIG.MAX_VELOCITY) {
+                    this.vx = (this.vx / speed) * CONFIG.MAX_VELOCITY;
+                    this.vy = (this.vy / speed) * CONFIG.MAX_VELOCITY;
+                }
+
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Recycle particle if it goes off the bottom
+                if (this.y > canvas.height + 10) {
+                    this.reset();
+                }
+
+                // Wrap horizontally if particle goes too far off screen
+                if (this.x < -50) this.x = canvas.width + 50;
+                if (this.x > canvas.width + 50) this.x = -50;
+            }
+
+            draw() {
+                ctx.fillStyle = CONFIG.PARTICLE_COLOR;
+                ctx.globalAlpha = CONFIG.PARTICLE_OPACITY;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // Create particle array
+        const particles = [];
+        for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+            particles.push(new Particle());
+        }
+
+        // ============================================
+        // HAND TRACKING
+        // ============================================
+
+        // Store detected hand landmarks
+        // Each hand has 21 keypoints (landmarks) in 3D space
+        let handsData = [];
+
+        /**
+         * MediaPipe Hands callback - called whenever hands are detected
+         *
+         * This function receives the results from MediaPipe Hands detection.
+         * Results contain:
+         * - multiHandLandmarks: array of hands, each with 21 landmarks
+         * - multiHandedness: information about whether each hand is left/right
+         *
+         * Each landmark has normalized coordinates (x, y, z):
+         * - x, y: normalized to 0-1 (we multiply by canvas size)
+         * - z: depth information (negative = closer to camera)
+         *
+         * Key landmarks for palm detection:
+         * - Landmark 0: Wrist
+         * - Landmark 9: Middle finger base (center of palm)
+         * - Landmarks 1-4: Thumb
+         * - Landmarks 5-8: Index finger
+         * - Landmarks 9-12: Middle finger
+         * - Landmarks 13-16: Ring finger
+         * - Landmarks 17-20: Pinky
+         */
+        function onHandsResults(results) {
+            handsData = [];
+
+            if (results.multiHandLandmarks) {
+                for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                    const landmarks = results.multiHandLandmarks[i];
+                    const handedness = results.multiHandedness[i];
+
+                    // Convert normalized coordinates to canvas pixel coordinates
+                    const hand = {
+                        label: handedness.label, // "Left" or "Right"
+                        score: handedness.score,  // Confidence score
+                        landmarks: landmarks.map(landmark => ({
+                            x: landmark.x * canvas.width,
+                            y: landmark.y * canvas.height,
+                            z: landmark.z // Keep depth for potential future use
+                        }))
+                    };
+
+                    // Only use hands with sufficient confidence
+                    if (hand.score >= CONFIG.HAND_CONFIDENCE_THRESHOLD) {
+                        handsData.push(hand);
+                    }
+                }
+            }
+
+            // Hide loading message once hands are being tracked
+            if (loading && !loading.classList.contains('hidden')) {
+                loading.classList.add('hidden');
+                // Fade out instructions after 5 seconds
+                setTimeout(() => {
+                    instructions.classList.add('fade');
+                }, 5000);
+            }
+        }
+
+        /**
+         * Apply forces to particles based on hand positions
+         *
+         * For each particle, we check its distance to all hand keypoints.
+         * If a particle is within the repulsion radius of any keypoint,
+         * we apply a force that:
+         * 1. Pushes the particle away horizontally (main effect)
+         * 2. Pushes it slightly upward (creates the "flowing up" effect)
+         *
+         * The force magnitude decreases with distance (inverse square-ish falloff)
+         * so particles closer to the hand are pushed more strongly.
+         */
+        function applyHandForces() {
+            if (handsData.length === 0) return;
+
+            particles.forEach(particle => {
+                // Check against all detected hands
+                handsData.forEach(hand => {
+                    // Check against all landmarks (keypoints) in the hand
+                    hand.landmarks.forEach(landmark => {
+                        // Calculate distance from particle to landmark
+                        const dx = particle.x - landmark.x;
+                        const dy = particle.y - landmark.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        // If particle is within repulsion radius
+                        if (distance < CONFIG.HAND_REPULSION_RADIUS && distance > 0) {
+                            // Calculate force falloff (stronger when closer)
+                            // Using smooth falloff: 1 at distance 0, 0 at radius
+                            const falloff = 1 - (distance / CONFIG.HAND_REPULSION_RADIUS);
+                            const force = CONFIG.HAND_FORCE_STRENGTH * falloff * falloff;
+
+                            // Normalize direction vector
+                            const dirX = dx / distance;
+                            const dirY = dy / distance;
+
+                            // Apply horizontal force (push away from hand)
+                            particle.vx += dirX * force;
+
+                            // Apply combined vertical force:
+                            // - Push away from hand in Y direction
+                            // - Add upward component to create "flowing up" effect
+                            const upwardForce = -CONFIG.HAND_FORCE_STRENGTH *
+                                              CONFIG.HAND_UPWARD_FORCE * falloff;
+                            particle.vy += dirY * force + upwardForce;
+                        }
+                    });
+                });
+            });
+        }
+
+        // ============================================
+        // MEDIAPIPE HANDS INITIALIZATION
+        // ============================================
+
+        // Initialize MediaPipe Hands
+        const hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+
+        // Configure hand detection
+        hands.setOptions({
+            maxNumHands: 2,              // Detect up to 2 hands
+            modelComplexity: 1,          // 0 (lite) or 1 (full) - balance speed vs accuracy
+            minDetectionConfidence: 0.5, // Minimum confidence for initial detection
+            minTrackingConfidence: 0.5   // Minimum confidence for tracking
+        });
+
+        // Register the callback for hand detection results
+        hands.onResults(onHandsResults);
+
+        // Setup camera
+        const camera = new Camera(document.createElement('video'), {
+            onFrame: async () => {
+                // Send each video frame to MediaPipe Hands for processing
+                await hands.send({ image: camera.video });
+            },
+            width: 1280,
+            height: 720
+        });
+
+        // Start the camera
+        camera.start();
+
+        // ============================================
+        // ANIMATION LOOP
+        // ============================================
+
+        function animate() {
+            // Create trail effect by drawing semi-transparent black rectangle
+            // instead of clearing the canvas completely
+            if (CONFIG.TRAIL_EFFECT) {
+                ctx.fillStyle = `rgba(10, 10, 10, ${CONFIG.TRAIL_ALPHA})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else {
+                // Clear canvas completely (no trails)
+                ctx.fillStyle = '#0a0a0a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Apply hand repulsion forces to all particles
+            applyHandForces();
+
+            // Update and draw all particles
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            // Continue animation loop
+            requestAnimationFrame(animate);
+        }
+
+        // Start the animation
+        animate();
+
+        // ============================================
+        // OPTIONAL: DEBUG VISUALIZATION
+        // Uncomment to see hand landmarks as dots
+        // ============================================
+
+        /*
+        function drawHandDebug() {
+            handsData.forEach(hand => {
+                hand.landmarks.forEach((landmark, index) => {
+                    ctx.fillStyle = index === 9 ? '#ff0000' : '#00ff00'; // Red for palm center
+                    ctx.beginPath();
+                    ctx.arc(landmark.x, landmark.y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Draw repulsion radius around palm center
+                    if (index === 9) {
+                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
+                        ctx.beginPath();
+                        ctx.arc(landmark.x, landmark.y, CONFIG.HAND_REPULSION_RADIUS, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                });
+            });
+        }
+
+        // Add this call in the animate function after drawing particles:
+        // drawHandDebug();
+        */
+    </script>
+</body>
+</html>
