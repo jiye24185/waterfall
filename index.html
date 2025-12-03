@@ -131,7 +131,7 @@
             color: #ffffff;
             font-size: 52px;
             font-weight: 600;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             letter-spacing: -0.5px;
             text-align: center;
             background: linear-gradient(135deg, #ffffff 0%, #4a9eff 100%);
@@ -141,40 +141,31 @@
             text-shadow: 0 2px 20px rgba(74, 158, 255, 0.3);
         }
 
-        .instruction-list {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 17px;
-            line-height: 2.2;
-            margin-bottom: 50px;
-            text-align: center;
+        #home-screen h2 {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 18px;
             font-weight: 400;
+            margin-bottom: 40px;
+            text-align: center;
         }
 
-        .instruction-list div {
-            margin: 10px 0;
-            padding: 8px 20px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-
-        .instruction-list div:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(74, 158, 255, 0.2);
-            transform: translateX(5px);
+        .button-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
         }
 
         /* Glassmorphic button */
-        #enter-button {
+        .experience-button {
             background: rgba(74, 158, 255, 0.2);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             color: white;
             border: 1.5px solid rgba(74, 158, 255, 0.4);
-            padding: 18px 55px;
-            font-size: 20px;
+            padding: 18px 40px;
+            font-size: 18px;
             font-weight: 600;
             letter-spacing: 1px;
             border-radius: 16px;
@@ -187,8 +178,17 @@
             overflow: hidden;
         }
 
+        /* Harp button variant - purple accent */
+        #harp-button {
+            background: rgba(167, 107, 255, 0.2);
+            border-color: rgba(167, 107, 255, 0.4);
+            box-shadow:
+                0 4px 20px rgba(167, 107, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
         /* Button shine effect */
-        #enter-button::before {
+        .experience-button::before {
             content: '';
             position: absolute;
             top: 0;
@@ -202,11 +202,11 @@
             transition: left 0.5s;
         }
 
-        #enter-button:hover::before {
+        .experience-button:hover::before {
             left: 100%;
         }
 
-        #enter-button:hover {
+        .experience-button:hover {
             background: rgba(74, 158, 255, 0.3);
             border-color: rgba(74, 158, 255, 0.6);
             transform: translateY(-2px);
@@ -215,7 +215,15 @@
                 inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
-        #enter-button:active {
+        #harp-button:hover {
+            background: rgba(167, 107, 255, 0.3);
+            border-color: rgba(167, 107, 255, 0.6);
+            box-shadow:
+                0 8px 30px rgba(167, 107, 255, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .experience-button:active {
             transform: translateY(0) scale(0.98);
             box-shadow:
                 0 2px 10px rgba(74, 158, 255, 0.3),
@@ -290,13 +298,12 @@
 
     <!-- Home screen -->
     <div id="home-screen">
-        <h1>Interactive Waterfall</h1>
-        <div class="instruction-list">
-            <div>Stand in front of your webcam</div>
-            <div>Move your hands to part the water</div>
-            <div>Experience the flow</div>
+        <h1>Interactive Experiences</h1>
+        <h2>Choose your hand-tracking adventure</h2>
+        <div class="button-container">
+            <button id="waterfall-button" class="experience-button">🌊 Enter Waterfall</button>
+            <button id="harp-button" class="experience-button">🎵 Enter String Harp</button>
         </div>
-        <button id="enter-button">Enter</button>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -319,6 +326,7 @@
         // ============================================
 
         const CONFIG = {
+            // === WATERFALL MODE SETTINGS ===
             // Particle system
             PARTICLE_COUNT: 2000,           // Total number of particles in the waterfall
             PARTICLE_SIZE_MIN: 1,           // Minimum particle size (pixels)
@@ -342,6 +350,30 @@
             TRAIL_EFFECT: true,             // Enable motion blur trail effect
             TRAIL_ALPHA: 0.15,              // Lower = longer trails (0-1)
 
+            // === STRING HARP MODE SETTINGS ===
+            // String configuration
+            STRING_COUNT: 12,               // Number of vertical strings across the canvas
+            STRING_WIDTH: 3,                // Width of each string (pixels)
+            STRING_COLOR: '#a76bff',        // String base color (purple/violet)
+            STRING_GLOW_COLOR: '#ff6bef',   // Glow color when string is plucked (pink)
+            STRING_OPACITY: 0.7,            // Base string opacity (0-1)
+
+            // String physics
+            STRING_VIBRATION_AMPLITUDE: 15, // Maximum displacement when vibrating (pixels)
+            STRING_VIBRATION_DECAY: 0.92,   // How quickly vibration dies down (0-1, lower = faster decay)
+            STRING_VIBRATION_FREQUENCY: 0.3,// Vibration speed (higher = faster oscillation)
+            STRING_DETECTION_RADIUS: 30,    // Distance at which hand triggers string (pixels)
+
+            // Audio settings
+            STRING_BASE_FREQUENCY: 220,     // Base frequency in Hz (A3 note)
+            STRING_NOTE_INTERVAL: 2,        // Semitones between strings (2 = whole step, 1 = half step)
+            STRING_VOLUME: 0.3,             // Master volume (0-1)
+            STRING_ATTACK: 0.01,            // Note attack time in seconds
+            STRING_DECAY: 0.3,              // Note decay time in seconds
+            STRING_SUSTAIN: 0.2,            // Sustain level (0-1)
+            STRING_RELEASE: 0.5,            // Note release time in seconds
+
+            // === SHARED SETTINGS ===
             // Hand tracking
             HAND_CONFIDENCE_THRESHOLD: 0.5, // Minimum confidence for hand detection (0-1)
         };
@@ -355,8 +387,12 @@
         const loading = document.getElementById('loading');
         const instructions = document.getElementById('instructions');
         const homeScreen = document.getElementById('home-screen');
-        const enterButton = document.getElementById('enter-button');
+        const waterfallButton = document.getElementById('waterfall-button');
+        const harpButton = document.getElementById('harp-button');
         const backButton = document.getElementById('back-button');
+
+        // Current mode: 'waterfall' or 'harp'
+        let currentMode = null;
 
         // Set canvas to full window size
         canvas.width = window.innerWidth;
@@ -438,6 +474,185 @@
         const particles = [];
 
         // ============================================
+        // STRING HARP SYSTEM
+        // ============================================
+
+        /**
+         * String class for the harp mode
+         * Each string vibrates and plays a note when a hand crosses it
+         */
+        class HarpString {
+            constructor(x, stringIndex) {
+                this.x = x;                          // X position on canvas
+                this.stringIndex = stringIndex;      // Index for note calculation
+                this.amplitude = 0;                  // Current vibration amplitude
+                this.phase = 0;                      // Vibration phase for wave motion
+                this.lastPluckedTime = 0;            // Timestamp of last pluck
+                this.isVibrating = false;            // Whether string is currently vibrating
+                this.pluckedThisFrame = false;      // Prevents multiple triggers per frame
+
+                // Calculate the frequency (pitch) for this string
+                // Using equal temperament: frequency = baseFreq * 2^(semitones/12)
+                const semitones = stringIndex * CONFIG.STRING_NOTE_INTERVAL;
+                this.frequency = CONFIG.STRING_BASE_FREQUENCY * Math.pow(2, semitones / 12);
+            }
+
+            /**
+             * Pluck the string - starts vibration and plays sound
+             */
+            pluck() {
+                if (this.pluckedThisFrame) return;
+
+                this.amplitude = CONFIG.STRING_VIBRATION_AMPLITUDE;
+                this.phase = 0;
+                this.isVibrating = true;
+                this.lastPluckedTime = Date.now();
+                this.pluckedThisFrame = true;
+
+                // Play the note
+                playNote(this.frequency);
+            }
+
+            /**
+             * Update string physics (vibration decay)
+             */
+            update() {
+                this.pluckedThisFrame = false; // Reset for next frame
+
+                if (this.isVibrating) {
+                    // Decay the amplitude
+                    this.amplitude *= CONFIG.STRING_VIBRATION_DECAY;
+
+                    // Advance the phase for oscillation
+                    this.phase += CONFIG.STRING_VIBRATION_FREQUENCY;
+
+                    // Stop vibrating when amplitude is very small
+                    if (this.amplitude < 0.1) {
+                        this.amplitude = 0;
+                        this.isVibrating = false;
+                        this.phase = 0;
+                    }
+                }
+            }
+
+            /**
+             * Draw the string with vibration effect
+             */
+            draw() {
+                ctx.save();
+
+                // Calculate horizontal displacement based on sine wave
+                const displacement = Math.sin(this.phase) * this.amplitude;
+
+                // Draw glow if recently plucked
+                if (this.isVibrating && this.amplitude > 5) {
+                    ctx.strokeStyle = CONFIG.STRING_GLOW_COLOR;
+                    ctx.globalAlpha = (this.amplitude / CONFIG.STRING_VIBRATION_AMPLITUDE) * 0.5;
+                    ctx.lineWidth = CONFIG.STRING_WIDTH + 6;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + displacement, 0);
+                    ctx.lineTo(this.x + displacement, canvas.height);
+                    ctx.stroke();
+                }
+
+                // Draw the main string
+                ctx.strokeStyle = CONFIG.STRING_COLOR;
+                ctx.globalAlpha = CONFIG.STRING_OPACITY;
+                ctx.lineWidth = CONFIG.STRING_WIDTH;
+                ctx.beginPath();
+                ctx.moveTo(this.x + displacement, 0);
+                ctx.lineTo(this.x + displacement, canvas.height);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            /**
+             * Check if a point (e.g., hand landmark) is near this string
+             */
+            isNear(pointX, pointY) {
+                const distance = Math.abs(pointX - this.x);
+                return distance < CONFIG.STRING_DETECTION_RADIUS;
+            }
+        }
+
+        // Create string array (will be populated when harp mode starts)
+        const strings = [];
+
+        // ============================================
+        // WEB AUDIO API SETUP
+        // ============================================
+
+        let audioContext = null;
+        let masterGain = null;
+
+        /**
+         * Initialize Web Audio API
+         * Called once when entering harp mode
+         */
+        function initAudio() {
+            if (audioContext) return; // Already initialized
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioContext.createGain();
+            masterGain.gain.value = CONFIG.STRING_VOLUME;
+            masterGain.connect(audioContext.destination);
+        }
+
+        /**
+         * Play a note with the given frequency
+         * Uses ADSR envelope for natural plucked sound
+         *
+         * @param {number} frequency - The frequency in Hz to play
+         */
+        function playNote(frequency) {
+            if (!audioContext) return;
+
+            const now = audioContext.currentTime;
+
+            // Create oscillator for the note
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'triangle'; // Triangle wave for softer, harp-like tone
+            oscillator.frequency.value = frequency;
+
+            // Create gain node for ADSR envelope
+            const noteGain = audioContext.createGain();
+            noteGain.gain.value = 0;
+
+            // Connect: oscillator -> gain -> master -> destination
+            oscillator.connect(noteGain);
+            noteGain.connect(masterGain);
+
+            // ADSR Envelope:
+            // Attack: quickly ramp up to full volume
+            noteGain.gain.setValueAtTime(0, now);
+            noteGain.gain.linearRampToValueAtTime(1, now + CONFIG.STRING_ATTACK);
+
+            // Decay: drop to sustain level
+            noteGain.gain.linearRampToValueAtTime(
+                CONFIG.STRING_SUSTAIN,
+                now + CONFIG.STRING_ATTACK + CONFIG.STRING_DECAY
+            );
+
+            // Sustain (held at sustain level, then release)
+            const releaseTime = now + CONFIG.STRING_ATTACK + CONFIG.STRING_DECAY + 0.1;
+
+            // Release: fade out to silence
+            noteGain.gain.setValueAtTime(CONFIG.STRING_SUSTAIN, releaseTime);
+            noteGain.gain.linearRampToValueAtTime(0, releaseTime + CONFIG.STRING_RELEASE);
+
+            // Start and stop the oscillator
+            oscillator.start(now);
+            oscillator.stop(releaseTime + CONFIG.STRING_RELEASE);
+
+            // Clean up
+            oscillator.onended = () => {
+                oscillator.disconnect();
+                noteGain.disconnect();
+            };
+        }
+
+        // ============================================
         // HAND TRACKING
         // ============================================
 
@@ -503,7 +718,7 @@
         }
 
         /**
-         * Apply forces to particles based on hand positions
+         * Apply forces to particles based on hand positions (WATERFALL MODE)
          *
          * For each particle, we check its distance to all hand keypoints.
          * If a particle is within the repulsion radius of any keypoint,
@@ -553,6 +768,32 @@
             });
         }
 
+        /**
+         * Check for hand interactions with strings (HARP MODE)
+         *
+         * For each string, we check if any hand landmark is near it.
+         * If a landmark crosses or comes close to a string, pluck it.
+         *
+         * This allows multiple strings to be plucked simultaneously
+         * as hands move across the canvas.
+         */
+        function checkStringInteractions() {
+            if (handsData.length === 0) return;
+
+            strings.forEach(string => {
+                // Check against all detected hands
+                handsData.forEach(hand => {
+                    // Check against all landmarks (keypoints) in the hand
+                    hand.landmarks.forEach(landmark => {
+                        // Check if this landmark is near the string
+                        if (string.isNear(landmark.x, landmark.y)) {
+                            string.pluck();
+                        }
+                    });
+                });
+            });
+        }
+
         // ============================================
         // MEDIAPIPE HANDS INITIALIZATION
         // ============================================
@@ -563,9 +804,13 @@
 
         /**
          * Initialize hand tracking and start the experience
-         * Called when the user clicks the Enter button
+         * Called when the user clicks a mode button
+         *
+         * @param {string} mode - Either 'waterfall' or 'harp'
          */
-        function startExperience() {
+        function startExperience(mode) {
+            currentMode = mode;
+
             // Hide home screen
             homeScreen.classList.add('hidden');
 
@@ -575,12 +820,26 @@
             // Show back button
             backButton.classList.add('visible');
 
-            // Create particles
-            for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
-                particles.push(new Particle());
+            // Update instructions based on mode
+            if (mode === 'waterfall') {
+                instructions.textContent = 'Move your hands to part the water';
+                // Create particles
+                for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+                    particles.push(new Particle());
+                }
+            } else if (mode === 'harp') {
+                instructions.textContent = 'Move your hands across the strings to play notes';
+                // Initialize audio
+                initAudio();
+                // Create strings evenly spaced across canvas
+                const spacing = canvas.width / (CONFIG.STRING_COUNT + 1);
+                for (let i = 0; i < CONFIG.STRING_COUNT; i++) {
+                    const x = spacing * (i + 1);
+                    strings.push(new HarpString(x, i));
+                }
             }
 
-            // Initialize MediaPipe Hands
+            // Initialize MediaPipe Hands (shared between modes)
             hands = new Hands({
                 locateFile: (file) => {
                     return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
@@ -598,7 +857,7 @@
             // Register the callback for hand detection results
             hands.onResults(onHandsResults);
 
-            // Setup camera
+            // Setup camera (shared between modes)
             camera = new Camera(document.createElement('video'), {
                 onFrame: async () => {
                     // Send each video frame to MediaPipe Hands for processing
@@ -620,7 +879,7 @@
 
         /**
          * Go back to home screen
-         * Stops camera, clears particles, and resets state
+         * Stops camera, clears particles/strings, and resets state
          */
         function goBackHome() {
             // Show home screen
@@ -648,8 +907,12 @@
             // Clear hands data
             handsData = [];
 
-            // Clear particles
+            // Clear particles and strings
             particles.length = 0;
+            strings.length = 0;
+
+            // Reset mode
+            currentMode = null;
 
             // Stop animation
             isAnimating = false;
@@ -663,10 +926,30 @@
         // ANIMATION LOOP
         // ============================================
 
+        /**
+         * Main animation loop - handles both waterfall and harp modes
+         * Routes to the appropriate rendering function based on currentMode
+         */
         function animate() {
             // Only continue if animating
             if (!isAnimating) return;
 
+            // Route to mode-specific rendering
+            if (currentMode === 'waterfall') {
+                animateWaterfall();
+            } else if (currentMode === 'harp') {
+                animateHarp();
+            }
+
+            // Continue animation loop
+            requestAnimationFrame(animate);
+        }
+
+        /**
+         * Waterfall mode animation
+         * Renders particles with trail effects and hand interaction
+         */
+        function animateWaterfall() {
             // Create trail effect by drawing semi-transparent black rectangle
             // instead of clearing the canvas completely
             if (CONFIG.TRAIL_EFFECT) {
@@ -686,17 +969,36 @@
                 particle.update();
                 particle.draw();
             });
+        }
 
-            // Continue animation loop
-            requestAnimationFrame(animate);
+        /**
+         * String Harp mode animation
+         * Renders strings with vibration effects and hand interaction
+         */
+        function animateHarp() {
+            // Clear canvas (no trail effect for harp mode)
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Check for hand interactions with strings
+            checkStringInteractions();
+
+            // Update and draw all strings
+            strings.forEach(string => {
+                string.update();
+                string.draw();
+            });
         }
 
         // ============================================
         // HOME SCREEN INTERACTION
         // ============================================
 
-        // Start experience when Enter button is clicked
-        enterButton.addEventListener('click', startExperience);
+        // Start waterfall experience when waterfall button is clicked
+        waterfallButton.addEventListener('click', () => startExperience('waterfall'));
+
+        // Start harp experience when harp button is clicked
+        harpButton.addEventListener('click', () => startExperience('harp'));
 
         // Go back to home when back button is clicked
         backButton.addEventListener('click', goBackHome);
