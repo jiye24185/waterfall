@@ -23,47 +23,75 @@
             background-color: #0a0a0a;
         }
 
-        /* Loading message */
+        /* Loading message - Glassmorphism */
         #loading {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: #4a9eff;
-            font-size: 24px;
+            color: #ffffff;
+            font-size: 22px;
             text-align: center;
             z-index: 10;
+            padding: 30px 50px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         #loading.hidden {
             display: none;
         }
 
-        /* Instructions overlay */
+        #loading div:first-child {
+            font-weight: 500;
+        }
+
+        #loading div:last-child {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+        }
+
+        /* Instructions overlay - Glassmorphism */
         #instructions {
             position: absolute;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 15px;
             text-align: center;
             pointer-events: none;
             transition: opacity 0.5s;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
 
         #instructions.fade {
             opacity: 0;
         }
 
-        /* Home screen */
+        /* Home screen - Glassmorphism style */
         #home-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: #0a0a0a;
+            background: linear-gradient(135deg,
+                rgba(10, 10, 20, 0.95) 0%,
+                rgba(20, 30, 50, 0.9) 50%,
+                rgba(10, 10, 20, 0.95) 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -77,51 +105,121 @@
             pointer-events: none;
         }
 
+        /* Glass card container */
+        #home-screen::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(600px, 90vw);
+            height: auto;
+            min-height: 400px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            padding: 60px 40px;
+            z-index: -1;
+        }
+
         #home-screen h1 {
-            color: #4a9eff;
-            font-size: 48px;
-            font-weight: 300;
-            margin-bottom: 40px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            color: #ffffff;
+            font-size: 52px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            letter-spacing: -0.5px;
+            text-align: center;
+            background: linear-gradient(135deg, #ffffff 0%, #4a9eff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 20px rgba(74, 158, 255, 0.3);
         }
 
         .instruction-list {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 18px;
-            line-height: 2;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 17px;
+            line-height: 2.2;
             margin-bottom: 50px;
             text-align: center;
+            font-weight: 400;
         }
 
         .instruction-list div {
-            margin: 8px 0;
+            margin: 10px 0;
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
         }
 
+        .instruction-list div:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(74, 158, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        /* Glassmorphic button */
         #enter-button {
-            background: linear-gradient(135deg, #4a9eff 0%, #3a7ed0 100%);
+            background: rgba(74, 158, 255, 0.2);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             color: white;
-            border: none;
-            padding: 20px 60px;
-            font-size: 24px;
+            border: 1.5px solid rgba(74, 158, 255, 0.4);
+            padding: 18px 55px;
+            font-size: 20px;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-radius: 50px;
+            letter-spacing: 1px;
+            border-radius: 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(74, 158, 255, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                0 4px 20px rgba(74, 158, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Button shine effect */
+        #enter-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent);
+            transition: left 0.5s;
+        }
+
+        #enter-button:hover::before {
+            left: 100%;
         }
 
         #enter-button:hover {
+            background: rgba(74, 158, 255, 0.3);
+            border-color: rgba(74, 158, 255, 0.6);
             transform: translateY(-2px);
-            box-shadow: 0 6px 30px rgba(74, 158, 255, 0.5);
-            background: linear-gradient(135deg, #5aadff 0%, #4a8ee0 100%);
+            box-shadow:
+                0 8px 30px rgba(74, 158, 255, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         #enter-button:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 10px rgba(74, 158, 255, 0.4);
+            transform: translateY(0) scale(0.98);
+            box-shadow:
+                0 2px 10px rgba(74, 158, 255, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
