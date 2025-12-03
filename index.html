@@ -221,9 +221,73 @@
                 0 2px 10px rgba(74, 158, 255, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
+
+        /* Back button - Glassmorphism */
+        #back-button {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #back-button.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #back-button:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow:
+                0 6px 25px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        #back-button:active {
+            transform: translateY(0) scale(0.95);
+            box-shadow:
+                0 2px 10px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* Back arrow icon */
+        #back-button svg {
+            width: 24px;
+            height: 24px;
+            stroke: rgba(255, 255, 255, 0.9);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
     </style>
 </head>
 <body>
+    <!-- Back button -->
+    <button id="back-button" aria-label="Go back to home">
+        <svg viewBox="0 0 24 24">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+    </button>
+
     <!-- Home screen -->
     <div id="home-screen">
         <h1>Interactive Waterfall</h1>
@@ -292,6 +356,7 @@
         const instructions = document.getElementById('instructions');
         const homeScreen = document.getElementById('home-screen');
         const enterButton = document.getElementById('enter-button');
+        const backButton = document.getElementById('back-button');
 
         // Set canvas to full window size
         canvas.width = window.innerWidth;
@@ -507,6 +572,9 @@
             // Show loading message
             loading.classList.remove('hidden');
 
+            // Show back button
+            backButton.classList.add('visible');
+
             // Create particles
             for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
                 particles.push(new Particle());
@@ -550,11 +618,55 @@
             }
         }
 
+        /**
+         * Go back to home screen
+         * Stops camera, clears particles, and resets state
+         */
+        function goBackHome() {
+            // Show home screen
+            homeScreen.classList.remove('hidden');
+
+            // Hide back button
+            backButton.classList.remove('visible');
+
+            // Hide loading and instructions
+            loading.classList.add('hidden');
+            instructions.classList.remove('fade');
+
+            // Stop camera if running
+            if (camera) {
+                camera.stop();
+                camera = null;
+            }
+
+            // Clear hand tracking
+            if (hands) {
+                hands.close();
+                hands = null;
+            }
+
+            // Clear hands data
+            handsData = [];
+
+            // Clear particles
+            particles.length = 0;
+
+            // Stop animation
+            isAnimating = false;
+
+            // Clear canvas
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
         // ============================================
         // ANIMATION LOOP
         // ============================================
 
         function animate() {
+            // Only continue if animating
+            if (!isAnimating) return;
+
             // Create trail effect by drawing semi-transparent black rectangle
             // instead of clearing the canvas completely
             if (CONFIG.TRAIL_EFFECT) {
@@ -585,6 +697,9 @@
 
         // Start experience when Enter button is clicked
         enterButton.addEventListener('click', startExperience);
+
+        // Go back to home when back button is clicked
+        backButton.addEventListener('click', goBackHome);
 
         // ============================================
         // OPTIONAL: DEBUG VISUALIZATION
