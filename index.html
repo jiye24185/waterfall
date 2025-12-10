@@ -325,6 +325,73 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
+
+        /* Camera toggle button - Glassmorphism */
+        #camera-toggle {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #camera-toggle.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #camera-toggle:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow:
+                0 6px 25px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        #camera-toggle:active {
+            transform: translateY(0) scale(0.95);
+            box-shadow:
+                0 2px 10px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* Camera icon */
+        #camera-toggle svg {
+            width: 24px;
+            height: 24px;
+            stroke: rgba(255, 255, 255, 0.9);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Camera active state */
+        #camera-toggle.active {
+            background: rgba(74, 158, 255, 0.2);
+            border-color: rgba(74, 158, 255, 0.4);
+        }
+
+        #camera-toggle.active svg {
+            stroke: rgba(74, 158, 255, 1);
+        }
     </style>
 </head>
 <body>
@@ -332,6 +399,14 @@
     <button id="back-button" aria-label="Go back to home">
         <svg viewBox="0 0 24 24">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+    </button>
+
+    <!-- Camera toggle button -->
+    <button id="camera-toggle" aria-label="Toggle camera background">
+        <svg viewBox="0 0 24 24">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
         </svg>
     </button>
 
@@ -443,10 +518,14 @@
         const homeScreen = document.getElementById('home-screen');
         const waterfallButton = document.getElementById('waterfall-button');
         const backButton = document.getElementById('back-button');
+        const cameraToggle = document.getElementById('camera-toggle');
         const handGuide = document.getElementById('hand-guide');
 
         // Track if hand guide has been shown
         let handGuideShown = false;
+
+        // Track if camera background is visible
+        let showCameraBackground = false;
 
         // Set canvas to full window size
         canvas.width = window.innerWidth;
@@ -972,8 +1051,9 @@
             // Show loading message
             loading.classList.remove('hidden');
 
-            // Show back button
+            // Show back button and camera toggle
             backButton.classList.add('visible');
+            cameraToggle.classList.add('visible');
 
             // Set instructions
             instructions.textContent = 'Move your hands to interact with the waterfall';
@@ -1034,12 +1114,17 @@
             // Show home screen
             homeScreen.classList.remove('hidden');
 
-            // Hide back button
+            // Hide back button and camera toggle
             backButton.classList.remove('visible');
+            cameraToggle.classList.remove('visible');
 
             // Hide loading and instructions
             loading.classList.add('hidden');
             instructions.classList.remove('fade');
+
+            // Reset camera background
+            showCameraBackground = false;
+            cameraToggle.classList.remove('active');
 
             // Stop camera if running
             if (camera) {
@@ -1093,15 +1178,54 @@
          * Renders particles with trail effects and hand interaction
          */
         function animateWaterfall() {
-            // Create trail effect by drawing semi-transparent black rectangle
-            // instead of clearing the canvas completely
-            if (CONFIG.TRAIL_EFFECT) {
-                ctx.fillStyle = `rgba(10, 10, 10, ${CONFIG.TRAIL_ALPHA})`;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Draw camera feed as background if enabled
+            if (showCameraBackground && camera && camera.video) {
+                // Draw the video frame to canvas
+                ctx.save();
+
+                // Flip horizontally to mirror the video (like a mirror)
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+
+                // Calculate dimensions to maintain aspect ratio
+                const videoAspect = camera.video.videoWidth / camera.video.videoHeight;
+                const canvasAspect = canvas.width / canvas.height;
+
+                let drawWidth, drawHeight, offsetX, offsetY;
+
+                if (canvasAspect > videoAspect) {
+                    // Canvas is wider - fit to width
+                    drawWidth = canvas.width;
+                    drawHeight = canvas.width / videoAspect;
+                    offsetX = 0;
+                    offsetY = (canvas.height - drawHeight) / 2;
+                } else {
+                    // Canvas is taller - fit to height
+                    drawHeight = canvas.height;
+                    drawWidth = canvas.height * videoAspect;
+                    offsetX = (canvas.width - drawWidth) / 2;
+                    offsetY = 0;
+                }
+
+                ctx.drawImage(camera.video, offsetX, offsetY, drawWidth, drawHeight);
+                ctx.restore();
+
+                // Add semi-transparent overlay for trail effect
+                if (CONFIG.TRAIL_EFFECT) {
+                    ctx.fillStyle = `rgba(10, 10, 10, ${CONFIG.TRAIL_ALPHA})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             } else {
-                // Clear canvas completely (no trails)
-                ctx.fillStyle = '#0a0a0a';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Create trail effect by drawing semi-transparent black rectangle
+                // instead of clearing the canvas completely
+                if (CONFIG.TRAIL_EFFECT) {
+                    ctx.fillStyle = `rgba(10, 10, 10, ${CONFIG.TRAIL_ALPHA})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                } else {
+                    // Clear canvas completely (no trails)
+                    ctx.fillStyle = '#0a0a0a';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             }
 
             // Apply hand repulsion forces to all particles (triggers sounds)
@@ -1142,6 +1266,16 @@
 
         // Go back to home when back button is clicked
         backButton.addEventListener('click', goBackHome);
+
+        // Toggle camera background visibility
+        cameraToggle.addEventListener('click', () => {
+            showCameraBackground = !showCameraBackground;
+            if (showCameraBackground) {
+                cameraToggle.classList.add('active');
+            } else {
+                cameraToggle.classList.remove('active');
+            }
+        });
 
         // ============================================
         // OPTIONAL: DEBUG VISUALIZATION
