@@ -281,7 +281,7 @@
 
     <!-- Home screen -->
     <div id="home-screen">
-        <h1>Musical Waterfall</h1>
+        <h1>Interactive Waterfall</h1>
         <h2>A hand-tracking audiovisual experience</h2>
         <div class="button-container">
             <button id="waterfall-button" class="experience-button">Enter</button>
@@ -332,18 +332,12 @@
             TRAIL_EFFECT: true,             // Enable motion blur trail effect
             TRAIL_ALPHA: 0.15,              // Lower = longer trails (0-1)
 
-            // Musical Waterfall - Horizontal strings
-            WATERFALL_MUSICAL_ENABLED: true,        // Enable musical notes when particles fall
-            WATERFALL_STRING_COUNT: 8,              // Number of horizontal musical strings
-            WATERFALL_STRING_COLOR: '#a76bff',      // String color (purple/violet)
-            WATERFALL_STRING_OPACITY: 0.15,         // Base string opacity (subtle)
-            WATERFALL_STRING_WIDTH: 2,              // String line width
-            WATERFALL_STRING_GLOW_OPACITY: 0.6,     // Opacity when particle triggers string
-            WATERFALL_STRING_GLOW_DURATION: 300,    // Glow duration in ms
-            WATERFALL_BASE_FREQUENCY: 220,          // Base frequency in Hz (A3 note)
-            WATERFALL_NOTE_INTERVAL: 2,             // Semitones between strings (2 = whole step)
-            WATERFALL_VOLUME: 0.15,                 // Musical waterfall volume (quieter than harp)
-            WATERFALL_NOTE_COOLDOWN: 100,           // Min ms between notes on same string
+            // Hand Interaction Audio
+            HAND_AUDIO_ENABLED: true,               // Enable sound when hands interact with particles
+            HAND_AUDIO_BASE_FREQUENCY: 220,         // Base frequency in Hz (A3 note)
+            HAND_AUDIO_FREQUENCY_RANGE: 880,        // Frequency range for particles (creates pitch variation)
+            HAND_AUDIO_VOLUME: 0.12,                // Volume for hand interaction sounds
+            HAND_AUDIO_COOLDOWN: 150,               // Min ms between sounds per particle
 
             // === STRING HARP MODE SETTINGS ===
             // String configuration
@@ -411,7 +405,7 @@
                 this.reset();
                 // Start particles at random heights for initial distribution
                 this.y = Math.random() * canvas.height;
-                this.lastCrossedStringIndex = -1; // Track which string was last crossed
+                this.lastSoundTime = 0; // Track when this particle last made a sound
             }
 
             reset() {
@@ -423,7 +417,7 @@
                 this.size = CONFIG.PARTICLE_SIZE_MIN + Math.random() *
                            (CONFIG.PARTICLE_SIZE_MAX - CONFIG.PARTICLE_SIZE_MIN);
                 this.baseX = this.x; // Remember original X position for subtle wave motion
-                this.lastCrossedStringIndex = -1; // Reset string tracking
+                this.lastSoundTime = 0; // Reset sound tracking
             }
 
             update() {
@@ -465,82 +459,6 @@
 
         // Create particle array (will be populated when experience starts)
         const particles = [];
-
-        // ============================================
-        // MUSICAL WATERFALL SYSTEM
-        // ============================================
-
-        /**
-         * WaterfallString class for horizontal musical strings
-         * Particles trigger notes as they fall through these strings
-         */
-        class WaterfallString {
-            constructor(y, stringIndex) {
-                this.y = y;                          // Y position on canvas
-                this.stringIndex = stringIndex;      // Index for note calculation
-                this.lastTriggeredTime = 0;          // Timestamp of last trigger
-                this.glowIntensity = 0;              // Current glow intensity (0-1)
-
-                // Calculate the frequency (pitch) for this string
-                // Higher strings = higher pitch (descending from top)
-                const semitones = (CONFIG.WATERFALL_STRING_COUNT - 1 - stringIndex) * CONFIG.WATERFALL_NOTE_INTERVAL;
-                this.frequency = CONFIG.WATERFALL_BASE_FREQUENCY * Math.pow(2, semitones / 12);
-            }
-
-            /**
-             * Trigger the string - plays sound and activates glow
-             */
-            trigger() {
-                const now = Date.now();
-                // Cooldown to prevent too many notes
-                if (now - this.lastTriggeredTime < CONFIG.WATERFALL_NOTE_COOLDOWN) {
-                    return;
-                }
-
-                this.lastTriggeredTime = now;
-                this.glowIntensity = 1.0;
-
-                // Play the note with waterfall volume
-                playWaterfallNote(this.frequency);
-            }
-
-            /**
-             * Update string glow decay
-             */
-            update() {
-                // Decay glow intensity
-                if (this.glowIntensity > 0) {
-                    const timeSinceTriggered = Date.now() - this.lastTriggeredTime;
-                    const decayFactor = 1 - (timeSinceTriggered / CONFIG.WATERFALL_STRING_GLOW_DURATION);
-                    this.glowIntensity = Math.max(0, decayFactor);
-                }
-            }
-
-            /**
-             * Draw the horizontal string
-             */
-            draw() {
-                ctx.save();
-
-                // Calculate opacity based on glow
-                const baseOpacity = CONFIG.WATERFALL_STRING_OPACITY;
-                const glowOpacity = CONFIG.WATERFALL_STRING_GLOW_OPACITY;
-                const currentOpacity = baseOpacity + (glowOpacity - baseOpacity) * this.glowIntensity;
-
-                ctx.strokeStyle = CONFIG.WATERFALL_STRING_COLOR;
-                ctx.globalAlpha = currentOpacity;
-                ctx.lineWidth = CONFIG.WATERFALL_STRING_WIDTH;
-                ctx.beginPath();
-                ctx.moveTo(0, this.y);
-                ctx.lineTo(canvas.width, this.y);
-                ctx.stroke();
-
-                ctx.restore();
-            }
-        }
-
-        // Create waterfall strings array (populated in waterfall mode)
-        const waterfallStrings = [];
 
         // ============================================
         // STRING HARP SYSTEM
@@ -722,22 +640,34 @@
         }
 
         /**
-         * Play a waterfall note with the given frequency (WATERFALL MODE)
-         * Shorter, gentler notes for ambient waterfall sounds
+         * Play a hand interaction sound
+         * Frequency varies based on particle position for musical variation
          *
-         * @param {number} frequency - The frequency in Hz to play
+         * @param {Particle} particle - The particle being affected by hands
          */
-        function playWaterfallNote(frequency) {
-            if (!audioContext) return;
+        function playHandInteractionSound(particle) {
+            if (!audioContext || !CONFIG.HAND_AUDIO_ENABLED) return;
 
-            const now = audioContext.currentTime;
+            // Check cooldown
+            const now = Date.now();
+            if (now - particle.lastSoundTime < CONFIG.HAND_AUDIO_COOLDOWN) {
+                return;
+            }
+            particle.lastSoundTime = now;
+
+            // Calculate frequency based on particle Y position (higher = higher pitch)
+            const normalizedY = 1 - (particle.y / canvas.height); // 0 at bottom, 1 at top
+            const frequency = CONFIG.HAND_AUDIO_BASE_FREQUENCY +
+                            (normalizedY * CONFIG.HAND_AUDIO_FREQUENCY_RANGE);
+
+            const audioNow = audioContext.currentTime;
 
             // Create oscillator for the note
             const oscillator = audioContext.createOscillator();
             oscillator.type = 'sine'; // Sine wave for pure, gentle tone
             oscillator.frequency.value = frequency;
 
-            // Create gain node with waterfall-specific volume
+            // Create gain node
             const noteGain = audioContext.createGain();
             noteGain.gain.value = 0;
 
@@ -745,26 +675,26 @@
             oscillator.connect(noteGain);
             noteGain.connect(audioContext.destination);
 
-            // Gentle envelope for ambient sound
-            const attack = 0.02;
-            const decay = 0.15;
-            const sustain = 0.3 * CONFIG.WATERFALL_VOLUME;
-            const release = 0.2;
+            // Very short, gentle envelope for water droplet sound
+            const attack = 0.01;
+            const decay = 0.08;
+            const sustain = 0.2 * CONFIG.HAND_AUDIO_VOLUME;
+            const release = 0.12;
 
             // Attack: quickly ramp up
-            noteGain.gain.setValueAtTime(0, now);
-            noteGain.gain.linearRampToValueAtTime(CONFIG.WATERFALL_VOLUME, now + attack);
+            noteGain.gain.setValueAtTime(0, audioNow);
+            noteGain.gain.linearRampToValueAtTime(CONFIG.HAND_AUDIO_VOLUME, audioNow + attack);
 
             // Decay to sustain
-            noteGain.gain.linearRampToValueAtTime(sustain, now + attack + decay);
+            noteGain.gain.linearRampToValueAtTime(sustain, audioNow + attack + decay);
 
             // Release
-            const releaseTime = now + attack + decay + 0.05;
+            const releaseTime = audioNow + attack + decay + 0.02;
             noteGain.gain.setValueAtTime(sustain, releaseTime);
             noteGain.gain.linearRampToValueAtTime(0, releaseTime + release);
 
             // Start and stop the oscillator
-            oscillator.start(now);
+            oscillator.start(audioNow);
             oscillator.stop(releaseTime + release);
 
             // Clean up
@@ -847,6 +777,7 @@
          * we apply a force that:
          * 1. Pushes the particle away horizontally (main effect)
          * 2. Pushes it slightly upward (creates the "flowing up" effect)
+         * 3. Triggers a musical sound when first affected
          *
          * The force magnitude decreases with distance (inverse square-ish falloff)
          * so particles closer to the hand are pushed more strongly.
@@ -855,6 +786,8 @@
             if (handsData.length === 0) return;
 
             particles.forEach(particle => {
+                let particleAffected = false; // Track if this particle is affected this frame
+
                 // Check against all detected hands
                 handsData.forEach(hand => {
                     // Check against all landmarks (keypoints) in the hand
@@ -884,33 +817,17 @@
                             const upwardForce = -CONFIG.HAND_FORCE_STRENGTH *
                                               CONFIG.HAND_UPWARD_FORCE * falloff;
                             particle.vy += dirY * force + upwardForce;
+
+                            // Mark particle as affected
+                            particleAffected = true;
                         }
                     });
                 });
-            });
-        }
 
-        /**
-         * Check for particle-string crossings (WATERFALL MODE)
-         *
-         * Detects when particles cross horizontal musical strings as they fall.
-         * Each particle triggers a note only once per string crossing.
-         */
-        function checkWaterfallStringCrossings() {
-            if (!CONFIG.WATERFALL_MUSICAL_ENABLED || waterfallStrings.length === 0) return;
-
-            particles.forEach(particle => {
-                waterfallStrings.forEach((string, index) => {
-                    // Check if particle has crossed this string (moving downward)
-                    const previousY = particle.y - particle.vy;
-                    const crossedThisFrame = previousY < string.y && particle.y >= string.y;
-
-                    if (crossedThisFrame && particle.lastCrossedStringIndex !== index) {
-                        // Particle just crossed this string
-                        particle.lastCrossedStringIndex = index;
-                        string.trigger();
-                    }
-                });
+                // Trigger sound if particle was affected by hands
+                if (particleAffected) {
+                    playHandInteractionSound(particle);
+                }
             });
         }
 
@@ -963,21 +880,16 @@
             backButton.classList.add('visible');
 
             // Set instructions
-            instructions.textContent = 'Move your hands to part the musical waterfall';
+            instructions.textContent = 'Move your hands to interact with the waterfall';
 
             // Create particles
             for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
                 particles.push(new Particle());
             }
 
-            // Create horizontal musical strings for waterfall
-            if (CONFIG.WATERFALL_MUSICAL_ENABLED) {
-                initAudio(); // Initialize audio for waterfall mode
-                const spacing = canvas.height / (CONFIG.WATERFALL_STRING_COUNT + 1);
-                for (let i = 0; i < CONFIG.WATERFALL_STRING_COUNT; i++) {
-                    const y = spacing * (i + 1);
-                    waterfallStrings.push(new WaterfallString(y, i));
-                }
+            // Initialize audio for hand interaction sounds
+            if (CONFIG.HAND_AUDIO_ENABLED) {
+                initAudio();
             }
 
             // Initialize MediaPipe Hands (shared between modes)
@@ -1048,9 +960,8 @@
             // Clear hands data
             handsData = [];
 
-            // Clear particles and strings
+            // Clear particles
             particles.length = 0;
-            waterfallStrings.length = 0;
 
             // Stop animation
             isAnimating = false;
@@ -1078,8 +989,8 @@
         }
 
         /**
-         * Waterfall mode animation
-         * Renders particles with trail effects, musical strings, and hand interaction
+         * Waterfall animation
+         * Renders particles with trail effects and hand interaction
          */
         function animateWaterfall() {
             // Create trail effect by drawing semi-transparent black rectangle
@@ -1093,18 +1004,7 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
-            // Draw and update musical strings (if enabled)
-            if (CONFIG.WATERFALL_MUSICAL_ENABLED) {
-                waterfallStrings.forEach(string => {
-                    string.update();
-                    string.draw();
-                });
-
-                // Check for particle-string crossings (triggers notes)
-                checkWaterfallStringCrossings();
-            }
-
-            // Apply hand repulsion forces to all particles
+            // Apply hand repulsion forces to all particles (triggers sounds)
             applyHandForces();
 
             // Update and draw all particles
