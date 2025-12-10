@@ -81,6 +81,62 @@
             opacity: 0;
         }
 
+        /* Hand gesture guide */
+        #hand-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            z-index: 15;
+        }
+
+        #hand-guide.visible {
+            opacity: 1;
+        }
+
+        #hand-guide.fade-out {
+            opacity: 0;
+        }
+
+        .hand-icon {
+            width: 120px;
+            height: 120px;
+            stroke: rgba(255, 255, 255, 0.8);
+            fill: none;
+            stroke-width: 1;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+            animation: wave 2s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% {
+                transform: rotate(-10deg);
+            }
+            50% {
+                transform: rotate(10deg);
+            }
+        }
+
+        .guide-text {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+            text-align: center;
+            margin-top: 20px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
         /* Home screen - Glassmorphism style */
         #home-screen {
             position: fixed;
@@ -289,6 +345,15 @@
     </div>
 
     <canvas id="canvas"></canvas>
+
+    <!-- Hand gesture guide -->
+    <div id="hand-guide">
+        <svg class="hand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C11.45 2 11 2.45 11 3V10.5H9V5C9 4.45 8.55 4 8 4C7.45 4 7 4.45 7 5V10.5H5V6C5 5.45 4.55 5 4 5C3.45 5 3 5.45 3 6V14C3 17.31 5.69 20 9 20H13C16.31 20 19 17.31 19 14V8C19 7.45 18.55 7 18 7C17.45 7 17 7.45 17 8V10.5H15V3C15 2.45 14.55 2 14 2C13.45 2 13 2.45 13 3V10.5H11V3C11 2.45 11.55 2 12 2Z"/>
+        </svg>
+        <div class="guide-text">Wave your hands</div>
+    </div>
+
     <div id="loading">
         <div>Loading hand tracking...</div>
         <div style="font-size: 14px; margin-top: 10px;">Please allow camera access</div>
@@ -378,6 +443,10 @@
         const homeScreen = document.getElementById('home-screen');
         const waterfallButton = document.getElementById('waterfall-button');
         const backButton = document.getElementById('back-button');
+        const handGuide = document.getElementById('hand-guide');
+
+        // Track if hand guide has been shown
+        let handGuideShown = false;
 
         // Set canvas to full window size
         canvas.width = window.innerWidth;
@@ -762,10 +831,37 @@
             // Hide loading message once hands are being tracked
             if (loading && !loading.classList.contains('hidden')) {
                 loading.classList.add('hidden');
+
+                // Show hand guide if no hands detected yet
+                if (!handGuideShown && handsData.length === 0) {
+                    setTimeout(() => {
+                        if (!handGuideShown && handsData.length === 0) {
+                            handGuide.classList.add('visible');
+
+                            // Auto-hide after 8 seconds
+                            setTimeout(() => {
+                                handGuide.classList.add('fade-out');
+                                setTimeout(() => {
+                                    handGuide.classList.remove('visible', 'fade-out');
+                                }, 500);
+                            }, 8000);
+                        }
+                    }, 500);
+                }
+
                 // Fade out instructions after 5 seconds
                 setTimeout(() => {
                     instructions.classList.add('fade');
                 }, 5000);
+            }
+
+            // Hide hand guide once hands are detected
+            if (handsData.length > 0 && !handGuideShown) {
+                handGuideShown = true;
+                handGuide.classList.add('fade-out');
+                setTimeout(() => {
+                    handGuide.classList.remove('visible', 'fade-out');
+                }, 500);
             }
         }
 
@@ -962,6 +1058,10 @@
 
             // Clear particles
             particles.length = 0;
+
+            // Reset hand guide
+            handGuideShown = false;
+            handGuide.classList.remove('visible', 'fade-out');
 
             // Stop animation
             isAnimating = false;
