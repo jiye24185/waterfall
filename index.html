@@ -583,14 +583,8 @@
 
             // 3D Isometric View
             ISO_ENABLED: false,                     // Start in 2D mode
-            ISO_YAW: 45,                            // Camera yaw angle in degrees
-            ISO_PITCH: 35,                          // Camera pitch angle in degrees
-            ISO_ZOOM: 1.0,                          // Zoom level
-            ISO_ZOOM_MIN: 0.5,                      // Minimum zoom
-            ISO_ZOOM_MAX: 3.0,                      // Maximum zoom
-            ISO_ORBIT_SPEED: 0.5,                   // Orbit rotation speed
-            ISO_PAN_SPEED: 1.0,                     // Pan movement speed
-            ISO_DEPTH_SCALE: 0.5,                   // Z-depth scaling factor
+            ISO_SCALE: 0.7,                         // Scale factor for isometric view
+            ISO_OFFSET_Y: -100,                     // Vertical offset for centering
 
             // === STRING HARP MODE SETTINGS ===
             // String configuration
@@ -648,21 +642,8 @@
         let poolLevel = 0;  // Current water level in pixels from bottom
         let ripples = [];   // Array of active ripples { x, y, radius, opacity }
 
-        // 3D Isometric camera state
+        // 3D Isometric mode state
         let isometricMode = false;
-        let isoCamera = {
-            yaw: CONFIG.ISO_YAW,              // Rotation around Y axis (degrees)
-            pitch: CONFIG.ISO_PITCH,          // Rotation around X axis (degrees)
-            zoom: CONFIG.ISO_ZOOM,            // Zoom level
-            panX: 0,                          // Pan offset X
-            panY: 0,                          // Pan offset Y
-        };
-
-        // Mouse/touch interaction state for camera controls
-        let isIsoDragging = false;
-        let isIsoRotating = false;
-        let isoLastMouseX = 0;
-        let isoLastMouseY = 0;
 
         // Set canvas to full window size
         canvas.width = window.innerWidth;
@@ -836,17 +817,17 @@
                 const poolSurfaceY = canvas.height - poolLevel;
                 if (this.y >= poolSurfaceY) return;
 
-                // Map 2D position to 3D space
-                // X maps to X, Y maps to Y (vertical), use 0 for Z (waterfall is a plane)
-                const x3d = this.x - canvas.width / 2;  // Center around origin
-                const y3d = this.y - canvas.height / 2;
-                const z3d = 0;  // Waterfall is a vertical plane
+                // Map 2D screen position to 3D world space
+                // The waterfall is a vertical plane facing the camera
+                const x3d = this.x - canvas.width / 2;    // Horizontal position
+                const y3d = -(this.y - canvas.height / 2); // Vertical position (inverted for proper orientation)
+                const z3d = 0;  // Depth = 0 (waterfall is a flat plane)
 
-                // Project to isometric 2D
+                // Project to true isometric 2D
                 const projected = projectIsometric(x3d, y3d, z3d);
 
                 // Apply disturbance effects (same as 2D)
-                const lateralOffset = this.disturbanceX;
+                const lateralOffset = this.disturbanceX * CONFIG.ISO_SCALE;
                 const heightMultiplier = 1 + (this.disturbance * 0.5);
                 const brightnessBoost = this.disturbance * 0.4;
 
@@ -878,50 +859,35 @@
         // ============================================
 
         /**
-         * Project 3D coordinates to 2D isometric view
+         * Project 3D coordinates to 2D true isometric view
+         * Uses classic isometric angles (30° from horizontal)
          * @param {number} x - X coordinate in 3D space
-         * @param {number} y - Y coordinate in 3D space (vertical)
+         * @param {number} y - Y coordinate in 3D space (vertical/height)
          * @param {number} z - Z coordinate in 3D space (depth)
          * @returns {Object} {x, y} - 2D screen coordinates
          */
         function projectIsometric(x, y, z) {
-            // Center the scene
+            // True isometric projection formulas
+            // Classic isometric: 30° angle, orthographic projection
+            const isoX = (x - z) * CONFIG.ISO_SCALE;
+            const isoY = ((x + z) * 0.5 - y) * CONFIG.ISO_SCALE;
+
+            // Center on screen with offset
             const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-
-            // Apply pan offsets
-            const panOffsetX = isoCamera.panX;
-            const panOffsetY = isoCamera.panY;
-
-            // Convert angles to radians
-            const yawRad = (isoCamera.yaw * Math.PI) / 180;
-            const pitchRad = (isoCamera.pitch * Math.PI) / 180;
-
-            // Rotate around Y axis (yaw)
-            const rotatedX = x * Math.cos(yawRad) - z * Math.sin(yawRad);
-            const rotatedZ = x * Math.sin(yawRad) + z * Math.cos(yawRad);
-
-            // Rotate around X axis (pitch)
-            const finalY = y * Math.cos(pitchRad) - rotatedZ * Math.sin(pitchRad);
-            const finalZ = y * Math.sin(pitchRad) + rotatedZ * Math.cos(pitchRad);
-
-            // Apply isometric projection with zoom
-            const isoX = (rotatedX - finalY) * isoCamera.zoom;
-            const isoY = ((rotatedX + finalY) * 0.5) * isoCamera.zoom;
+            const centerY = canvas.height / 2 + CONFIG.ISO_OFFSET_Y;
 
             return {
-                x: centerX + isoX + panOffsetX,
-                y: centerY + isoY + panOffsetY,
+                x: centerX + isoX,
+                y: centerY + isoY,
             };
         }
 
         /**
-         * Get Z-depth for a 3D point (for sorting)
+         * Get depth for a 3D point (for proper rendering order)
+         * In isometric view, depth = x + y + z
          */
         function getDepth(x, y, z) {
-            const yawRad = (isoCamera.yaw * Math.PI) / 180;
-            const rotatedZ = x * Math.sin(yawRad) + z * Math.cos(yawRad);
-            return y + rotatedZ;
+            return x + y + z;
         }
 
         // ============================================
@@ -994,6 +960,86 @@
 
                 ctx.globalAlpha = 1.0;
             });
+        }
+
+        /**
+         * Draw the pool in isometric 3D view
+         * Renders as a volumetric block composed of stacked layers
+         */
+        function drawPoolIsometric() {
+            if (poolLevel <= 0) return;
+
+            const blockSize = 20; // Size of each voxel block
+            const poolDepth = 100; // Depth of pool in 3D space
+
+            // Calculate pool dimensions in 3D space
+            const poolWidth = canvas.width;
+            const poolHeight = poolLevel;
+
+            // Draw pool as layers of blocks
+            const numLayersY = Math.ceil(poolHeight / blockSize);
+            const numBlocksX = Math.ceil(poolWidth / blockSize);
+            const numBlocksZ = Math.ceil(poolDepth / blockSize);
+
+            // Collect all blocks with their depths for sorting
+            const blocks = [];
+
+            for (let ly = 0; ly < numLayersY; ly++) {
+                for (let bx = 0; bx < numBlocksX; bx++) {
+                    for (let bz = 0; bz < numBlocksZ; bz++) {
+                        // 3D position of block
+                        const x3d = (bx * blockSize) - poolWidth / 2 + blockSize / 2;
+                        const y3d = -(canvas.height / 2 - poolHeight) + (ly * blockSize);
+                        const z3d = (bz * blockSize) - poolDepth / 2 + blockSize / 2;
+
+                        blocks.push({ x3d, y3d, z3d, layer: ly, indexX: bx, indexZ: bz });
+                    }
+                }
+            }
+
+            // Sort blocks by depth (painter's algorithm)
+            blocks.sort((a, b) => {
+                const depthA = getDepth(a.x3d, a.y3d, a.z3d);
+                const depthB = getDepth(b.x3d, b.y3d, b.z3d);
+                return depthA - depthB;
+            });
+
+            // Draw each block
+            blocks.forEach(block => {
+                const projected = projectIsometric(block.x3d, block.y3d, block.z3d);
+
+                // Color based on layer and position
+                const depthFactor = 0.6 + (block.layer / numLayersY) * 0.4;
+                const colorIndex = (block.indexX + block.indexZ + block.layer) % CONFIG.BAR_COLOR_PALETTE.length;
+                const baseColor = CONFIG.BAR_COLOR_PALETTE[colorIndex];
+
+                // Adjust brightness
+                const r = parseInt(baseColor.slice(1, 3), 16);
+                const g = parseInt(baseColor.slice(3, 5), 16);
+                const b = parseInt(baseColor.slice(5, 7), 16);
+
+                const newR = Math.round(r * depthFactor);
+                const newG = Math.round(g * depthFactor);
+                const newB = Math.round(b * depthFactor);
+
+                const adjustedColor = `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+
+                // Draw isometric cube face (top, left, right)
+                const isoSize = blockSize * CONFIG.ISO_SCALE;
+
+                ctx.fillStyle = adjustedColor;
+                ctx.globalAlpha = 0.6;
+
+                // Draw simple square for each block (simplified for performance)
+                ctx.fillRect(
+                    projected.x - isoSize / 2,
+                    projected.y - isoSize / 2,
+                    isoSize,
+                    isoSize
+                );
+            });
+
+            ctx.globalAlpha = 1.0;
         }
 
         /**
@@ -1588,11 +1634,6 @@
             // Reset isometric mode
             isometricMode = false;
             isoToggle.classList.remove('active');
-            isoCamera.yaw = CONFIG.ISO_YAW;
-            isoCamera.pitch = CONFIG.ISO_PITCH;
-            isoCamera.zoom = CONFIG.ISO_ZOOM;
-            isoCamera.panX = 0;
-            isoCamera.panY = 0;
 
             // Reset hand interaction
             handInteractionEnabled = false;
@@ -1729,7 +1770,11 @@
 
             // Update and draw pool system
             updateRipples();
-            drawPool();
+            if (isometricMode) {
+                drawPoolIsometric();
+            } else {
+                drawPool();
+            }
         }
 
         /**
@@ -1780,71 +1825,6 @@
                 isoToggle.classList.remove('active');
             }
         });
-
-        // ============================================
-        // CAMERA CONTROLS FOR 3D MODE
-        // ============================================
-
-        // Mouse down - start rotation/pan
-        canvas.addEventListener('mousedown', (e) => {
-            if (!isometricMode) return;
-
-            if (e.shiftKey) {
-                isIsoDragging = true; // Pan mode with shift key
-            } else {
-                isIsoRotating = true; // Rotate mode by default
-            }
-            isoLastMouseX = e.clientX;
-            isoLastMouseY = e.clientY;
-        });
-
-        // Mouse move - apply rotation/pan
-        canvas.addEventListener('mousemove', (e) => {
-            if (!isometricMode) return;
-
-            if (isIsoRotating) {
-                const deltaX = e.clientX - isoLastMouseX;
-                const deltaY = e.clientY - isoLastMouseY;
-
-                // Orbit camera
-                isoCamera.yaw += deltaX * CONFIG.ISO_ORBIT_SPEED;
-                isoCamera.pitch += deltaY * CONFIG.ISO_ORBIT_SPEED * 0.5;
-
-                // Clamp pitch to prevent flipping
-                isoCamera.pitch = Math.max(-89, Math.min(89, isoCamera.pitch));
-
-                isoLastMouseX = e.clientX;
-                isoLastMouseY = e.clientY;
-            } else if (isIsoDragging) {
-                const deltaX = e.clientX - isoLastMouseX;
-                const deltaY = e.clientY - isoLastMouseY;
-
-                // Pan camera
-                isoCamera.panX += deltaX * CONFIG.ISO_PAN_SPEED;
-                isoCamera.panY += deltaY * CONFIG.ISO_PAN_SPEED;
-
-                isoLastMouseX = e.clientX;
-                isoLastMouseY = e.clientY;
-            }
-        });
-
-        // Mouse up - stop rotation/pan
-        canvas.addEventListener('mouseup', () => {
-            isIsoRotating = false;
-            isIsoDragging = false;
-        });
-
-        // Mouse wheel - zoom
-        canvas.addEventListener('wheel', (e) => {
-            if (!isometricMode) return;
-
-            e.preventDefault();
-            const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
-            isoCamera.zoom *= zoomDelta;
-
-            // Clamp zoom
-            isoCamera.zoom = Math.max(CONFIG.ISO_ZOOM_MIN, Math.min(CONFIG.ISO_ZOOM_MAX, isoCamera.zoom));
-        }, { passive: false });
 
         // ============================================
         // OPTIONAL: DEBUG VISUALIZATION
