@@ -479,6 +479,16 @@
             HAND_AUDIO_VOLUME: 0.12,                // Volume for hand interaction sounds
             HAND_AUDIO_COOLDOWN: 150,               // Min ms between sounds per particle
 
+            // Pool System
+            POOL_MAX_HEIGHT_RATIO: 1/8,             // Maximum pool height as fraction of canvas height (1/8)
+            POOL_ACCUMULATION_RATE: 0.05,           // How much each particle adds to pool level
+            POOL_COLOR: 'rgba(74, 158, 255, 0.4)',  // Pool water color with transparency
+            POOL_SURFACE_COLOR: 'rgba(74, 158, 255, 0.6)', // Brighter color for surface
+            POOL_RIPPLE_MAX_RADIUS: 50,             // Maximum ripple radius in pixels
+            POOL_RIPPLE_SPEED: 2,                   // How fast ripples expand
+            POOL_RIPPLE_FADE: 0.95,                 // Ripple opacity decay (lower = faster fade)
+            POOL_RIPPLE_WIDTH: 2,                   // Ripple stroke width
+
             // === STRING HARP MODE SETTINGS ===
             // String configuration
             STRING_COUNT: 12,               // Number of vertical strings across the canvas
@@ -529,6 +539,10 @@
 
         // Track if hand interaction is enabled (disabled until instructions fade)
         let handInteractionEnabled = false;
+
+        // Pool system state
+        let poolLevel = 0;  // Current water level in pixels from bottom
+        let ripples = [];   // Array of active ripples { x, y, radius, opacity }
 
         // Set canvas to full window size
         canvas.width = window.innerWidth;
@@ -590,7 +604,30 @@
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // Recycle particle if it goes off the bottom
+                // Calculate pool surface position
+                const poolSurfaceY = canvas.height - poolLevel;
+
+                // Check if particle hits pool surface
+                if (this.y >= poolSurfaceY && this.vy > 0) {
+                    // Particle enters pool - add to pool level
+                    const maxPoolHeight = canvas.height * CONFIG.POOL_MAX_HEIGHT_RATIO;
+                    if (poolLevel < maxPoolHeight) {
+                        poolLevel += CONFIG.POOL_ACCUMULATION_RATE;
+                    }
+
+                    // Create ripple at impact point
+                    ripples.push({
+                        x: this.x,
+                        y: poolSurfaceY,
+                        radius: 0,
+                        opacity: 1
+                    });
+
+                    // Reset particle to top
+                    this.reset();
+                }
+
+                // Recycle particle if it goes off the bottom (safety fallback)
                 if (this.y > canvas.height + 10) {
                     this.reset();
                 }
@@ -601,6 +638,10 @@
             }
 
             draw() {
+                // Don't draw particles that are below the pool surface
+                const poolSurfaceY = canvas.height - poolLevel;
+                if (this.y >= poolSurfaceY) return;
+
                 ctx.fillStyle = CONFIG.PARTICLE_COLOR;
                 ctx.globalAlpha = CONFIG.PARTICLE_OPACITY;
                 ctx.fillRect(this.x, this.y, this.size, this.size);
@@ -610,6 +651,86 @@
 
         // Create particle array (will be populated when experience starts)
         const particles = [];
+
+        // ============================================
+        // POOL SYSTEM FUNCTIONS
+        // ============================================
+
+        /**
+         * Update all active ripples
+         * Expands their radius and fades their opacity
+         * Removes ripples that have faded out
+         */
+        function updateRipples() {
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const ripple = ripples[i];
+
+                // Expand radius
+                ripple.radius += CONFIG.POOL_RIPPLE_SPEED;
+
+                // Fade opacity
+                ripple.opacity *= CONFIG.POOL_RIPPLE_FADE;
+
+                // Remove if faded or too large
+                if (ripple.opacity < 0.01 || ripple.radius > CONFIG.POOL_RIPPLE_MAX_RADIUS) {
+                    ripples.splice(i, 1);
+                }
+            }
+        }
+
+        /**
+         * Draw all active ripples on the pool surface
+         */
+        function drawRipples() {
+            ripples.forEach(ripple => {
+                ctx.strokeStyle = CONFIG.POOL_SURFACE_COLOR;
+                ctx.globalAlpha = ripple.opacity;
+                ctx.lineWidth = CONFIG.POOL_RIPPLE_WIDTH;
+
+                ctx.beginPath();
+                ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.globalAlpha = 1.0;
+            });
+        }
+
+        /**
+         * Draw the pool at the bottom of the canvas
+         * Shows accumulated water with a surface line and ripples
+         */
+        function drawPool() {
+            if (poolLevel <= 0) return;
+
+            const poolSurfaceY = canvas.height - poolLevel;
+
+            // Draw pool water body
+            ctx.fillStyle = CONFIG.POOL_COLOR;
+            ctx.fillRect(0, poolSurfaceY, canvas.width, poolLevel);
+
+            // Draw surface line with slight wave effect
+            ctx.strokeStyle = CONFIG.POOL_SURFACE_COLOR;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            // Create subtle sine wave for surface
+            const waveAmplitude = 2;
+            const waveFrequency = 0.01;
+            const time = Date.now() * 0.001;
+
+            for (let x = 0; x <= canvas.width; x += 5) {
+                const y = poolSurfaceY + Math.sin(x * waveFrequency + time) * waveAmplitude;
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+
+            // Draw ripples on top of pool
+            drawRipples();
+        }
 
         // ============================================
         // STRING HARP SYSTEM
@@ -1134,6 +1255,10 @@
             // Reset hand interaction
             handInteractionEnabled = false;
 
+            // Reset pool system
+            poolLevel = 0;
+            ripples = [];
+
             // Stop camera if running
             if (camera) {
                 camera.stop();
@@ -1244,6 +1369,10 @@
                 particle.update();
                 particle.draw();
             });
+
+            // Update and draw pool system
+            updateRipples();
+            drawPool();
         }
 
         /**
