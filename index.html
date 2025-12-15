@@ -527,6 +527,9 @@
         // Track if camera background is visible
         let showCameraBackground = false;
 
+        // Track if hand interaction is enabled (disabled until instructions fade)
+        let handInteractionEnabled = false;
+
         // Set canvas to full window size
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -928,9 +931,10 @@
                     }, 500);
                 }
 
-                // Fade out instructions after 5 seconds
+                // Fade out instructions after 5 seconds and enable hand interaction
                 setTimeout(() => {
                     instructions.classList.add('fade');
+                    handInteractionEnabled = true;
                 }, 5000);
             }
 
@@ -958,7 +962,8 @@
          * so particles closer to the hand are pushed more strongly.
          */
         function applyHandForces() {
-            if (handsData.length === 0) return;
+            // Don't apply forces if interaction is disabled or no hands detected
+            if (!handInteractionEnabled || handsData.length === 0) return;
 
             particles.forEach(particle => {
                 let particleAffected = false; // Track if this particle is affected this frame
@@ -1125,6 +1130,9 @@
             // Reset camera background
             showCameraBackground = false;
             cameraToggle.classList.remove('active');
+
+            // Reset hand interaction
+            handInteractionEnabled = false;
 
             // Stop camera if running
             if (camera) {
