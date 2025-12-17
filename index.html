@@ -466,7 +466,7 @@
         const CONFIG = {
             // === WATERFALL MODE SETTINGS ===
             // Particle system
-            PARTICLE_COUNT: 2000,           // Total number of particles in the waterfall
+            PARTICLE_COUNT: 600,            // Total number of particles (reduced for performance)
             PARTICLE_SIZE_MIN: 1,           // Minimum particle size (pixels)
             PARTICLE_SIZE_MAX: 3,           // Maximum particle size (pixels)
             PARTICLE_SPEED_MIN: 2,          // Minimum initial fall speed
@@ -486,16 +486,16 @@
             PARTICLE_COLOR: '#4a9eff',      // Particle color (CSS color)
             PARTICLE_OPACITY: 0.6,          // Particle opacity (0-1)
             TRAIL_EFFECT: true,             // Enable motion blur trail effect
-            TRAIL_ALPHA: 0.15,              // Lower = longer trails (0-1) - Increased for better visibility
+            TRAIL_ALPHA: 0.2,               // Lower = longer trails - increased for visibility
 
             // Light Trail Visual Style (inspired by long exposure photography)
-            TRAIL_WIDTH: 1.5,               // Thin line width (increased for visibility)
-            TRAIL_LENGTH_MIN: 40,           // Minimum trail length in pixels
-            TRAIL_LENGTH_MAX: 120,          // Maximum trail length in pixels
-            TRAIL_BRIGHTNESS_MIN: 0.5,      // Minimum brightness multiplier
+            TRAIL_WIDTH: 2,                 // Line width optimized for visibility
+            TRAIL_LENGTH_MIN: 50,           // Minimum trail length in pixels
+            TRAIL_LENGTH_MAX: 100,          // Maximum trail length in pixels
+            TRAIL_BRIGHTNESS_MIN: 0.6,      // Minimum brightness multiplier
             TRAIL_BRIGHTNESS_MAX: 1.0,      // Maximum brightness multiplier
             TRAIL_BASE_COLOR: '#ffffff',    // White/gray for elegant look
-            TRAIL_OPACITY_BASE: 1.0,        // Base opacity for trails (maximum visibility)
+            TRAIL_OPACITY_BASE: 0.8,        // Base opacity for trails
             DISTURBANCE_DECAY: 0.92,        // How quickly disturbance fades after hand interaction
             DISTURBANCE_SPREAD: 3,          // How many pixels disturbance spreads per frame
 
@@ -516,13 +516,14 @@
 
             // Pool System
             POOL_MAX_HEIGHT_RATIO: 1/8,             // Maximum pool height as fraction of canvas height (1/8)
-            POOL_ACCUMULATION_RATE: 0.05,           // How much each particle adds to pool level
+            POOL_ACCUMULATION_RATE: 0.02,           // How much each particle adds to pool level (reduced for performance)
             POOL_COLOR: 'rgba(74, 158, 255, 0.4)',  // Pool water color with transparency
             POOL_SURFACE_COLOR: 'rgba(74, 158, 255, 0.6)', // Brighter color for surface
-            POOL_RIPPLE_MAX_RADIUS: 50,             // Maximum ripple radius in pixels
-            POOL_RIPPLE_SPEED: 2,                   // How fast ripples expand
-            POOL_RIPPLE_FADE: 0.95,                 // Ripple opacity decay (lower = faster fade)
+            POOL_RIPPLE_MAX_RADIUS: 40,             // Maximum ripple radius in pixels (reduced for performance)
+            POOL_RIPPLE_SPEED: 3,                   // How fast ripples expand (faster to fade quicker)
+            POOL_RIPPLE_FADE: 0.90,                 // Ripple opacity decay (lower = faster fade)
             POOL_RIPPLE_WIDTH: 2,                   // Ripple stroke width
+            POOL_MAX_RIPPLES: 10,                   // Maximum number of ripples at once
 
             // === STRING HARP MODE SETTINGS ===
             // String configuration
@@ -707,12 +708,15 @@
                             if (poolLevel < maxPoolHeight) {
                                 poolLevel += CONFIG.POOL_ACCUMULATION_RATE;
                             }
-                            ripples.push({
-                                x: this.x,
-                                y: poolSurfaceY,
-                                radius: 0,
-                                opacity: 1
-                            });
+                            // Only create ripples sometimes to reduce overhead
+                            if (ripples.length < CONFIG.POOL_MAX_RIPPLES && Math.random() < 0.3) {
+                                ripples.push({
+                                    x: this.x,
+                                    y: poolSurfaceY,
+                                    radius: 0,
+                                    opacity: 1
+                                });
+                            }
                         }
                         this.reset();
                     }
@@ -809,53 +813,26 @@
 
         /**
          * Draw all active ripples on the pool surface
-         * Rectangular wave fronts instead of circles (graphic style)
+         * Simplified for better performance
          */
         function drawRipples() {
+            if (ripples.length === 0) return;
+
+            const poolSurfaceY = canvas.height - poolLevel;
+
             ripples.forEach(ripple => {
-                const poolSurfaceY = canvas.height - poolLevel;
-
-                // Draw horizontal rectangular ripple bands
-                ctx.strokeStyle = CONFIG.POOL_SURFACE_COLOR;
-                ctx.globalAlpha = ripple.opacity * 0.8;
-                ctx.lineWidth = 3;
-
-                // Main horizontal band at surface
-                const bandHeight = 4;
-                const bandWidth = ripple.radius * 4; // Spread horizontally
-
-                ctx.strokeRect(
-                    ripple.x - bandWidth / 2,
-                    poolSurfaceY - bandHeight / 2,
-                    bandWidth,
-                    bandHeight
-                );
-
-                // Secondary smaller bands above and below for layered effect
-                ctx.globalAlpha = ripple.opacity * 0.4;
+                // Simple circle ripple for performance
+                ctx.strokeStyle = `rgba(255, 255, 255, ${ripple.opacity * 0.4})`;
                 ctx.lineWidth = 2;
-
-                ctx.strokeRect(
-                    ripple.x - bandWidth / 3,
-                    poolSurfaceY - bandHeight * 2,
-                    bandWidth / 1.5,
-                    bandHeight / 2
-                );
-
-                ctx.strokeRect(
-                    ripple.x - bandWidth / 3,
-                    poolSurfaceY + bandHeight * 1.5,
-                    bandWidth / 1.5,
-                    bandHeight / 2
-                );
-
-                ctx.globalAlpha = 1.0;
+                ctx.beginPath();
+                ctx.arc(ripple.x, poolSurfaceY, ripple.radius, 0, Math.PI * 2);
+                ctx.stroke();
             });
         }
 
         /**
          * Draw the pool at the bottom of the canvas
-         * Grid-based rectangular block rendering (graphic style)
+         * Simplified for better performance
          */
         function drawPool() {
             if (poolLevel <= 0) return;
@@ -863,56 +840,30 @@
             const poolSurfaceY = canvas.height - poolLevel;
             const time = Date.now() * 0.001;
 
-            // Pool rendered as stacked layers of rectangular blocks
-            const blockHeight = 6;
-            const blockWidth = 12;
-            const blockSpacing = 2;
+            // Simple gradient pool for performance
+            const gradient = ctx.createLinearGradient(0, poolSurfaceY, 0, canvas.height);
+            gradient.addColorStop(0, 'rgba(74, 158, 255, 0.3)');
+            gradient.addColorStop(1, 'rgba(74, 158, 255, 0.5)');
 
-            // Calculate how many layers to draw
-            const numLayers = Math.ceil(poolLevel / (blockHeight + blockSpacing));
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, poolSurfaceY, canvas.width, poolLevel);
 
-            for (let layer = 0; layer < numLayers; layer++) {
-                const y = canvas.height - (layer * (blockHeight + blockSpacing));
+            // Simple animated surface line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
 
-                // Determine if this is the surface layer
-                const isSurface = (y >= poolSurfaceY - blockHeight && y <= poolSurfaceY + blockHeight);
-
-                // Draw blocks across the width
-                for (let x = 0; x < canvas.width; x += blockWidth + blockSpacing) {
-                    // Add subtle wave motion to surface layer
-                    let yOffset = 0;
-                    if (isSurface) {
-                        yOffset = Math.sin(x * 0.02 + time * 2) * 2;
-                    }
-
-                    // Vary brightness slightly for depth effect
-                    const depthFactor = 1 - (layer / numLayers) * 0.3;
-
-                    // Choose color from palette (cycle through)
-                    const colorIndex = Math.floor((x / (blockWidth + blockSpacing) + layer) % CONFIG.BAR_COLOR_PALETTE.length);
-                    const baseColor = CONFIG.BAR_COLOR_PALETTE[colorIndex];
-
-                    // Adjust brightness for depth
-                    const r = parseInt(baseColor.slice(1, 3), 16);
-                    const g = parseInt(baseColor.slice(3, 5), 16);
-                    const b = parseInt(baseColor.slice(5, 7), 16);
-
-                    const newR = Math.round(r * depthFactor);
-                    const newG = Math.round(g * depthFactor);
-                    const newB = Math.round(b * depthFactor);
-
-                    const adjustedColor = `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
-
-                    // Draw block
-                    ctx.fillStyle = adjustedColor;
-                    ctx.globalAlpha = isSurface ? 0.7 : 0.5;
-                    ctx.fillRect(x, y + yOffset - blockHeight, blockWidth, blockHeight);
+            for (let x = 0; x < canvas.width; x += 10) {
+                const y = poolSurfaceY + Math.sin(x * 0.02 + time * 2) * 2;
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
                 }
             }
+            ctx.stroke();
 
-            ctx.globalAlpha = 1.0;
-
-            // Draw ripples on top of pool
+            // Simplified ripples
             drawRipples();
         }
 
@@ -1255,16 +1206,7 @@
 
         /**
          * Apply forces to particles based on hand positions (WATERFALL MODE)
-         *
-         * For each particle, we check its distance to all hand keypoints.
-         * If a particle is within the repulsion radius of any keypoint,
-         * we apply a force that:
-         * 1. Pushes the particle away horizontally (main effect)
-         * 2. Pushes it slightly upward (creates the "flowing up" effect)
-         * 3. Triggers a musical sound when first affected
-         *
-         * The force magnitude decreases with distance (inverse square-ish falloff)
-         * so particles closer to the hand are pushed more strongly.
+         * Optimized to only check key landmarks for better performance
          */
         function applyHandForces() {
             // Don't apply forces if interaction is disabled or no hands detected
@@ -1275,8 +1217,13 @@
 
                 // Check against all detected hands
                 handsData.forEach(hand => {
-                    // Check against all landmarks (keypoints) in the hand
-                    hand.landmarks.forEach(landmark => {
+                    // Only check key landmarks for performance (palm center and fingertips)
+                    // Landmark 0: Wrist, 4: Thumb tip, 8: Index tip, 9: Palm center, 12: Middle tip, 16: Ring tip, 20: Pinky tip
+                    const keyLandmarks = [0, 4, 8, 9, 12, 16, 20];
+
+                    keyLandmarks.forEach(index => {
+                        const landmark = hand.landmarks[index];
+
                         // Calculate distance from particle to landmark
                         const dx = particle.x - landmark.x;
                         const dy = particle.y - landmark.y;
@@ -1285,7 +1232,6 @@
                         // If particle is within repulsion radius
                         if (distance < CONFIG.HAND_REPULSION_RADIUS && distance > 0) {
                             // Calculate force falloff (stronger when closer)
-                            // Using smooth falloff: 1 at distance 0, 0 at radius
                             const falloff = 1 - (distance / CONFIG.HAND_REPULSION_RADIUS);
                             const force = CONFIG.HAND_FORCE_STRENGTH * falloff * falloff;
 
@@ -1296,16 +1242,14 @@
                             // Apply horizontal force (push away from hand)
                             particle.vx += dirX * force;
 
-                            // Apply combined vertical force:
-                            // - Push away from hand in Y direction
-                            // - Add upward component to create "flowing up" effect
+                            // Apply combined vertical force with upward component
                             const upwardForce = -CONFIG.HAND_FORCE_STRENGTH *
                                               CONFIG.HAND_UPWARD_FORCE * falloff;
                             particle.vy += dirY * force + upwardForce;
 
-                            // Apply visual disturbance effects (for graphic bar rendering)
+                            // Apply visual disturbance effects
                             particle.disturbance = Math.max(particle.disturbance, falloff);
-                            particle.disturbanceX = dirX * falloff * 15; // Lateral shift
+                            particle.disturbanceX = dirX * falloff * 15;
 
                             // Mark particle as affected
                             particleAffected = true;
