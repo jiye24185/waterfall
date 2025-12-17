@@ -560,16 +560,16 @@
             PARTICLE_COLOR: '#4a9eff',      // Particle color (CSS color)
             PARTICLE_OPACITY: 0.6,          // Particle opacity (0-1)
             TRAIL_EFFECT: true,             // Enable motion blur trail effect
-            TRAIL_ALPHA: 0.05,              // Lower = longer trails (0-1) - More elegant for light trails
+            TRAIL_ALPHA: 0.1,               // Lower = longer trails (0-1) - Balanced for visibility
 
             // Light Trail Visual Style (inspired by long exposure photography)
-            TRAIL_WIDTH: 0.5,               // Thin line width
+            TRAIL_WIDTH: 1.0,               // Thin line width (increased for visibility)
             TRAIL_LENGTH_MIN: 40,           // Minimum trail length in pixels
             TRAIL_LENGTH_MAX: 120,          // Maximum trail length in pixels
             TRAIL_BRIGHTNESS_MIN: 0.3,      // Minimum brightness multiplier
             TRAIL_BRIGHTNESS_MAX: 1.0,      // Maximum brightness multiplier
             TRAIL_BASE_COLOR: '#ffffff',    // White/gray for elegant look
-            TRAIL_OPACITY_BASE: 0.7,        // Base opacity for trails
+            TRAIL_OPACITY_BASE: 0.9,        // Base opacity for trails (increased for visibility)
             DISTURBANCE_DECAY: 0.92,        // How quickly disturbance fades after hand interaction
             DISTURBANCE_SPREAD: 3,          // How many pixels disturbance spreads per frame
 
@@ -748,11 +748,13 @@
 
                 } else if (currentMode === 'wind') {
                     // Wind mode: horizontal movement with wave pattern
+                    this.baseX += this.vx; // Move horizontally
+
                     const time = Date.now() * 0.001;
                     const waveOffset = Math.sin(this.y * CONFIG.WIND_WAVE_FREQUENCY + time) * CONFIG.WIND_WAVE_AMPLITUDE;
                     this.x = this.baseX + waveOffset;
 
-                    // Continue horizontal motion
+                    // Slight vertical drift
                     this.y += this.vy;
 
                 } else if (currentMode === 'beam') {
@@ -798,8 +800,8 @@
 
                 } else if (currentMode === 'wind') {
                     // Wind: reset when off horizontal edges
-                    if ((this.baseX > 0 && this.baseX > canvas.width + 10) ||
-                        (this.baseX < 0 && this.baseX < -10)) {
+                    if ((this.vx > 0 && this.baseX > canvas.width + 10) ||
+                        (this.vx < 0 && this.baseX < -10)) {
                         this.reset();
                     }
 
@@ -1830,12 +1832,14 @@
                 });
             }
 
-            // Update and draw pool system
-            updateRipples();
-            if (isometricMode) {
-                drawPoolIsometric();
-            } else {
-                drawPool();
+            // Update and draw pool system (water mode only)
+            if (currentMode === 'water') {
+                updateRipples();
+                if (isometricMode) {
+                    drawPoolIsometric();
+                } else {
+                    drawPool();
+                }
             }
         }
 
