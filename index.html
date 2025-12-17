@@ -137,17 +137,14 @@
             }
         }
 
-        /* Home screen - Glassmorphism style */
+        /* Home screen - Minimal clean style */
         #home-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: linear-gradient(135deg,
-                rgba(10, 10, 20, 0.95) 0%,
-                rgba(20, 30, 50, 0.9) 50%,
-                rgba(10, 10, 20, 0.95) 100%);
+            background: #000000;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -161,48 +158,19 @@
             pointer-events: none;
         }
 
-        /* Glass card container */
-        #home-screen::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: min(600px, 90vw);
-            height: auto;
-            min-height: 400px;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow:
-                0 8px 32px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            padding: 60px 40px;
-            z-index: -1;
-        }
-
         #home-screen h1 {
             color: #ffffff;
-            font-size: 52px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            letter-spacing: -0.5px;
+            font-size: 72px;
+            font-weight: 300;
+            margin-bottom: 60px;
+            letter-spacing: 8px;
             text-align: center;
-            background: linear-gradient(135deg, #ffffff 0%, #4a9eff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 2px 20px rgba(74, 158, 255, 0.3);
+            text-transform: uppercase;
+            opacity: 0.95;
         }
 
         #home-screen h2 {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 18px;
-            font-weight: 400;
-            margin-bottom: 40px;
-            text-align: center;
+            display: none; /* Remove subtitle for cleaner look */
         }
 
         .button-container {
@@ -213,57 +181,28 @@
             align-items: center;
         }
 
-        /* Glassmorphic button */
+        /* Minimal enter button */
         .experience-button {
-            background: rgba(74, 158, 255, 0.2);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: transparent;
             color: white;
-            border: 1.5px solid rgba(74, 158, 255, 0.4);
-            padding: 18px 55px;
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 16px 60px;
+            font-size: 16px;
+            font-weight: 300;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            border-radius: 0;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow:
-                0 4px 20px rgba(74, 158, 255, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Button shine effect */
-        .experience-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg,
-                transparent,
-                rgba(255, 255, 255, 0.2),
-                transparent);
-            transition: left 0.5s;
-        }
-
-        .experience-button:hover::before {
-            left: 100%;
+            transition: all 0.4s ease;
         }
 
         .experience-button:hover {
-            background: rgba(74, 158, 255, 0.3);
-            border-color: rgba(74, 158, 255, 0.6);
-            transform: translateY(-2px);
-            box-shadow:
-                0 8px 30px rgba(74, 158, 255, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.6);
         }
 
         .experience-button:active {
-            transform: translateY(0) scale(0.98);
+            background: rgba(255, 255, 255, 0.1);
             box-shadow:
                 0 2px 10px rgba(74, 158, 255, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -457,6 +396,64 @@
         #iso-toggle.active svg {
             stroke: rgba(167, 139, 250, 1);
         }
+
+        /* Mode Selector */
+        #mode-selector {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 50;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        #mode-selector.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .mode-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.5;
+        }
+
+        .mode-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: rgba(255, 255, 255, 0.8);
+            fill: none;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.4);
+            opacity: 0.8;
+        }
+
+        .mode-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.6);
+            opacity: 1;
+        }
+
+        .mode-btn.active svg {
+            stroke: rgba(255, 255, 255, 1);
+        }
     </style>
 </head>
 <body>
@@ -486,11 +483,30 @@
 
     <!-- Home screen -->
     <div id="home-screen">
-        <h1>Interactive Waterfall</h1>
+        <h1>FLOW</h1>
         <h2>A hand-tracking audiovisual experience</h2>
         <div class="button-container">
             <button id="waterfall-button" class="experience-button">Enter</button>
         </div>
+    </div>
+
+    <!-- Mode selection UI -->
+    <div id="mode-selector" class="hidden">
+        <button id="mode-water" class="mode-btn active" data-mode="water" aria-label="Water mode">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            </svg>
+        </button>
+        <button id="mode-wind" class="mode-btn" data-mode="wind" aria-label="Wind mode">
+            <svg viewBox="0 0 24 24">
+                <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
+            </svg>
+        </button>
+        <button id="mode-beam" class="mode-btn" data-mode="beam" aria-label="Beam mode">
+            <svg viewBox="0 0 24 24">
+                <path d="M3 3l18 18M3 21L21 3m-9 9l-3-3m3 3l3 3m-3-3l3-3m-3 3l-3 3"/>
+            </svg>
+        </button>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -546,23 +562,24 @@
             TRAIL_EFFECT: true,             // Enable motion blur trail effect
             TRAIL_ALPHA: 0.15,              // Lower = longer trails (0-1)
 
-            // Graphic Bar Visual Style
-            BAR_WIDTH_MIN: 3,               // Minimum bar width in pixels
-            BAR_WIDTH_MAX: 8,               // Maximum bar width in pixels
-            BAR_HEIGHT_MIN: 8,              // Minimum bar height in pixels
-            BAR_HEIGHT_MAX: 20,             // Maximum bar height in pixels
-            BAR_BRIGHTNESS_MIN: 0.4,        // Minimum brightness multiplier
-            BAR_BRIGHTNESS_MAX: 1.0,        // Maximum brightness multiplier
-            BAR_SPACING_VARIATION: 0.3,     // How much spacing varies (0-1)
-            BAR_COLOR_PALETTE: [            // Limited color palette for bars
-                '#2dd4bf',                  // cyan
-                '#4a9eff',                  // blue
-                '#a78bfa',                  // violet
-                '#60a5fa',                  // light blue
-            ],
-            BAR_GRID_SNAP: 4,               // Grid snap size for alignment
-            BAR_DISTURBANCE_DECAY: 0.92,    // How quickly disturbance fades after hand interaction
-            BAR_DISTURBANCE_SPREAD: 3,      // How many pixels disturbance spreads per frame
+            // Light Trail Visual Style (inspired by long exposure photography)
+            TRAIL_WIDTH: 0.5,               // Thin line width
+            TRAIL_LENGTH_MIN: 40,           // Minimum trail length in pixels
+            TRAIL_LENGTH_MAX: 120,          // Maximum trail length in pixels
+            TRAIL_BRIGHTNESS_MIN: 0.3,      // Minimum brightness multiplier
+            TRAIL_BRIGHTNESS_MAX: 1.0,      // Maximum brightness multiplier
+            TRAIL_BASE_COLOR: '#ffffff',    // White/gray for elegant look
+            TRAIL_OPACITY_BASE: 0.7,        // Base opacity for trails
+            DISTURBANCE_DECAY: 0.92,        // How quickly disturbance fades after hand interaction
+            DISTURBANCE_SPREAD: 3,          // How many pixels disturbance spreads per frame
+
+            // Mode-specific physics
+            WATER_GRAVITY: 0.15,            // Gravity for water mode
+            WIND_HORIZONTAL_FORCE: 3,       // Horizontal force for wind mode
+            WIND_WAVE_AMPLITUDE: 150,       // Wave amplitude for wind
+            WIND_WAVE_FREQUENCY: 0.003,     // Wave frequency for wind
+            BEAM_ROTATION_SPEED: 0.02,      // Rotation speed for beam mode
+            BEAM_DANCE_AMPLITUDE: 2,        // Dance amplitude for beam mode
 
             // Hand Interaction Audio
             HAND_AUDIO_ENABLED: true,               // Enable sound when hands interact with particles
@@ -628,6 +645,8 @@
         const cameraToggle = document.getElementById('camera-toggle');
         const isoToggle = document.getElementById('iso-toggle');
         const handGuide = document.getElementById('hand-guide');
+        const modeSelector = document.getElementById('mode-selector');
+        const modeButtons = document.querySelectorAll('.mode-btn');
 
         // Track if hand guide has been shown
         let handGuideShown = false;
@@ -644,6 +663,9 @@
 
         // 3D Isometric mode state
         let isometricMode = false;
+
+        // Current mode state (water, wind, or beam)
+        let currentMode = 'water';
 
         // Set canvas to full window size
         canvas.width = window.innerWidth;
@@ -669,37 +691,50 @@
         class Particle {
             constructor() {
                 this.reset();
-                // Start particles at random heights for initial distribution
+                // Start particles at random positions for initial distribution
                 this.y = Math.random() * canvas.height;
-                this.lastSoundTime = 0; // Track when this particle last made a sound
+                this.lastSoundTime = 0;
 
-                // Bar visual properties (randomized once, persist across resets)
-                this.barWidth = CONFIG.BAR_WIDTH_MIN + Math.random() *
-                               (CONFIG.BAR_WIDTH_MAX - CONFIG.BAR_WIDTH_MIN);
-                this.barHeight = CONFIG.BAR_HEIGHT_MIN + Math.random() *
-                                (CONFIG.BAR_HEIGHT_MAX - CONFIG.BAR_HEIGHT_MIN);
-                this.brightness = CONFIG.BAR_BRIGHTNESS_MIN + Math.random() *
-                                 (CONFIG.BAR_BRIGHTNESS_MAX - CONFIG.BAR_BRIGHTNESS_MIN);
-                this.colorIndex = Math.floor(Math.random() * CONFIG.BAR_COLOR_PALETTE.length);
-                this.baseBarHeight = this.barHeight; // Store original height
+                // Light trail visual properties (persist across resets)
+                this.trailLength = CONFIG.TRAIL_LENGTH_MIN + Math.random() *
+                                  (CONFIG.TRAIL_LENGTH_MAX - CONFIG.TRAIL_LENGTH_MIN);
+                this.brightness = CONFIG.TRAIL_BRIGHTNESS_MIN + Math.random() *
+                                 (CONFIG.TRAIL_BRIGHTNESS_MAX - CONFIG.TRAIL_BRIGHTNESS_MIN);
 
-                // Disturbance state for hand interaction visual effects
-                this.disturbance = 0; // 0 = no disturbance, 1 = full disturbance
-                this.disturbanceX = 0; // Lateral shift from disturbance
+                // For beam mode - rotation angle
+                this.angle = Math.random() * Math.PI * 2;
+                this.angleVelocity = (Math.random() - 0.5) * CONFIG.BEAM_ROTATION_SPEED;
+
+                // Disturbance state for hand interaction
+                this.disturbance = 0;
+                this.disturbanceX = 0;
             }
 
             reset() {
-                this.x = Math.random() * canvas.width;
-                this.y = -10; // Start just above the visible canvas
-                this.vx = 0; // Velocity X
-                this.vy = CONFIG.PARTICLE_SPEED_MIN + Math.random() *
-                         (CONFIG.PARTICLE_SPEED_MAX - CONFIG.PARTICLE_SPEED_MIN);
-                this.size = CONFIG.PARTICLE_SIZE_MIN + Math.random() *
-                           (CONFIG.PARTICLE_SIZE_MAX - CONFIG.PARTICLE_SIZE_MIN);
-                this.baseX = this.x; // Remember original X position for subtle wave motion
-                this.lastSoundTime = 0; // Reset sound tracking
+                // Reset position based on current mode
+                if (currentMode === 'water') {
+                    // Water: particles start at top
+                    this.x = Math.random() * canvas.width;
+                    this.y = -10;
+                    this.vx = 0;
+                    this.vy = CONFIG.PARTICLE_SPEED_MIN + Math.random() *
+                             (CONFIG.PARTICLE_SPEED_MAX - CONFIG.PARTICLE_SPEED_MIN);
+                } else if (currentMode === 'wind') {
+                    // Wind: particles start from left or right edge
+                    this.y = Math.random() * canvas.height;
+                    this.x = Math.random() > 0.5 ? -10 : canvas.width + 10;
+                    this.vx = this.x < 0 ? CONFIG.WIND_HORIZONTAL_FORCE : -CONFIG.WIND_HORIZONTAL_FORCE;
+                    this.vy = (Math.random() - 0.5) * 2;
+                } else if (currentMode === 'beam') {
+                    // Beam: particles start from center and move outward
+                    this.x = canvas.width / 2;
+                    this.y = canvas.height / 2;
+                    this.vx = (Math.random() - 0.5) * 4;
+                    this.vy = (Math.random() - 0.5) * 4;
+                }
 
-                // Reset disturbance but keep visual properties
+                this.baseX = this.x;
+                this.lastSoundTime = 0;
                 this.disturbance = 0;
                 this.disturbanceX = 0;
             }
