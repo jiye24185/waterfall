@@ -332,71 +332,6 @@
             stroke: rgba(74, 158, 255, 1);
         }
 
-        /* 3D Mode Toggle Button */
-        #iso-toggle {
-            position: fixed;
-            top: 90px; /* Below camera toggle */
-            right: 30px;
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1.5px solid rgba(255, 255, 255, 0.15);
-            border-radius: 14px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow:
-                0 4px 20px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            z-index: 50;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        #iso-toggle.visible {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        #iso-toggle:hover {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.25);
-            transform: translateY(-2px);
-            box-shadow:
-                0 6px 25px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        }
-
-        #iso-toggle:active {
-            transform: translateY(0) scale(0.95);
-            box-shadow:
-                0 2px 10px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        }
-
-        #iso-toggle svg {
-            width: 24px;
-            height: 24px;
-            stroke: rgba(255, 255, 255, 0.9);
-            fill: none;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        #iso-toggle.active {
-            background: rgba(167, 139, 250, 0.2);
-            border-color: rgba(167, 139, 250, 0.4);
-        }
-
-        #iso-toggle.active svg {
-            stroke: rgba(167, 139, 250, 1);
-        }
-
         /* Mode Selector */
         #mode-selector {
             position: fixed;
@@ -469,15 +404,6 @@
         <svg viewBox="0 0 24 24">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
             <circle cx="12" cy="13" r="4"/>
-        </svg>
-    </button>
-
-    <!-- 3D Isometric Mode Toggle -->
-    <button id="iso-toggle" aria-label="Toggle 3D isometric view">
-        <svg viewBox="0 0 24 24">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-            <line x1="12" y1="22.08" x2="12" y2="12"/>
         </svg>
     </button>
 
@@ -560,16 +486,16 @@
             PARTICLE_COLOR: '#4a9eff',      // Particle color (CSS color)
             PARTICLE_OPACITY: 0.6,          // Particle opacity (0-1)
             TRAIL_EFFECT: true,             // Enable motion blur trail effect
-            TRAIL_ALPHA: 0.1,               // Lower = longer trails (0-1) - Balanced for visibility
+            TRAIL_ALPHA: 0.15,              // Lower = longer trails (0-1) - Increased for better visibility
 
             // Light Trail Visual Style (inspired by long exposure photography)
-            TRAIL_WIDTH: 1.0,               // Thin line width (increased for visibility)
+            TRAIL_WIDTH: 1.5,               // Thin line width (increased for visibility)
             TRAIL_LENGTH_MIN: 40,           // Minimum trail length in pixels
             TRAIL_LENGTH_MAX: 120,          // Maximum trail length in pixels
-            TRAIL_BRIGHTNESS_MIN: 0.3,      // Minimum brightness multiplier
+            TRAIL_BRIGHTNESS_MIN: 0.5,      // Minimum brightness multiplier
             TRAIL_BRIGHTNESS_MAX: 1.0,      // Maximum brightness multiplier
             TRAIL_BASE_COLOR: '#ffffff',    // White/gray for elegant look
-            TRAIL_OPACITY_BASE: 0.9,        // Base opacity for trails (increased for visibility)
+            TRAIL_OPACITY_BASE: 1.0,        // Base opacity for trails (maximum visibility)
             DISTURBANCE_DECAY: 0.92,        // How quickly disturbance fades after hand interaction
             DISTURBANCE_SPREAD: 3,          // How many pixels disturbance spreads per frame
 
@@ -597,11 +523,6 @@
             POOL_RIPPLE_SPEED: 2,                   // How fast ripples expand
             POOL_RIPPLE_FADE: 0.95,                 // Ripple opacity decay (lower = faster fade)
             POOL_RIPPLE_WIDTH: 2,                   // Ripple stroke width
-
-            // 3D Isometric View
-            ISO_ENABLED: false,                     // Start in 2D mode
-            ISO_SCALE: 0.7,                         // Scale factor for isometric view
-            ISO_OFFSET_Y: -100,                     // Vertical offset for centering
 
             // === STRING HARP MODE SETTINGS ===
             // String configuration
@@ -643,7 +564,6 @@
         const waterfallButton = document.getElementById('waterfall-button');
         const backButton = document.getElementById('back-button');
         const cameraToggle = document.getElementById('camera-toggle');
-        const isoToggle = document.getElementById('iso-toggle');
         const handGuide = document.getElementById('hand-guide');
         const modeSelector = document.getElementById('mode-selector');
         const modeButtons = document.querySelectorAll('.mode-btn');
@@ -660,9 +580,6 @@
         // Pool system state
         let poolLevel = 0;  // Current water level in pixels from bottom
         let ripples = [];   // Array of active ripples { x, y, radius, opacity }
-
-        // 3D Isometric mode state
-        let isometricMode = false;
 
         // Current mode state (water, wind, or beam)
         let currentMode = 'water';
@@ -781,22 +698,24 @@
 
                 // Check bounds and reset based on mode
                 if (currentMode === 'water') {
-                    // Water: check pool surface or bottom
-                    const poolSurfaceY = canvas.height - poolLevel;
-                    if (this.y >= poolSurfaceY && this.vy > 0) {
-                        const maxPoolHeight = canvas.height * CONFIG.POOL_MAX_HEIGHT_RATIO;
-                        if (poolLevel < maxPoolHeight) {
-                            poolLevel += CONFIG.POOL_ACCUMULATION_RATE;
+                    // Water: reset when reaching bottom (endless falling)
+                    if (this.y > canvas.height) {
+                        // Add to pool before resetting
+                        const poolSurfaceY = canvas.height - poolLevel;
+                        if (this.vy > 0) {
+                            const maxPoolHeight = canvas.height * CONFIG.POOL_MAX_HEIGHT_RATIO;
+                            if (poolLevel < maxPoolHeight) {
+                                poolLevel += CONFIG.POOL_ACCUMULATION_RATE;
+                            }
+                            ripples.push({
+                                x: this.x,
+                                y: poolSurfaceY,
+                                radius: 0,
+                                opacity: 1
+                            });
                         }
-                        ripples.push({
-                            x: this.x,
-                            y: poolSurfaceY,
-                            radius: 0,
-                            opacity: 1
-                        });
                         this.reset();
                     }
-                    if (this.y > canvas.height + 10) this.reset();
 
                 } else if (currentMode === 'wind') {
                     // Wind: reset when off horizontal edges
@@ -820,12 +739,6 @@
             }
 
             draw() {
-                // Don't draw particles in pool (water mode only)
-                if (currentMode === 'water') {
-                    const poolSurfaceY = canvas.height - poolLevel;
-                    if (this.y >= poolSurfaceY) return;
-                }
-
                 // Calculate final brightness with disturbance boost
                 const brightnessBoost = this.disturbance * 0.3;
                 const finalBrightness = Math.min(1, this.brightness + brightnessBoost);
@@ -863,92 +776,10 @@
 
                 ctx.globalAlpha = 1.0;
             }
-
-            // Draw in 3D isometric mode (simplified for light trails)
-            drawIsometric() {
-                if (currentMode === 'water') {
-                    const poolSurfaceY = canvas.height - poolLevel;
-                    if (this.y >= poolSurfaceY) return;
-                }
-
-                // Map to 3D space
-                const x3d = this.x - canvas.width / 2;
-                const y3d = -(this.y - canvas.height / 2);
-                const z3d = 0;
-
-                // Project to isometric 2D
-                const projected = projectIsometric(x3d, y3d, z3d);
-
-                // Calculate trail end in 3D
-                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-                let trailEnd3d;
-
-                if (speed > 0.1) {
-                    const trailFactor = Math.min(speed / 5, 1);
-                    const effectiveLength = this.trailLength * trailFactor;
-
-                    const endX3d = x3d - (this.vx / speed) * effectiveLength;
-                    const endY3d = y3d + (this.vy / speed) * effectiveLength;
-                    trailEnd3d = projectIsometric(endX3d, endY3d, 0);
-                } else {
-                    trailEnd3d = { x: projected.x, y: projected.y + 10 };
-                }
-
-                // Draw light trail in isometric view
-                const finalBrightness = Math.min(1, this.brightness + this.disturbance * 0.3);
-
-                ctx.strokeStyle = CONFIG.TRAIL_BASE_COLOR;
-                ctx.globalAlpha = CONFIG.TRAIL_OPACITY_BASE * finalBrightness;
-                ctx.lineWidth = CONFIG.TRAIL_WIDTH;
-                ctx.lineCap = 'round';
-
-                ctx.beginPath();
-                ctx.moveTo(projected.x, projected.y);
-                ctx.lineTo(trailEnd3d.x, trailEnd3d.y);
-                ctx.stroke();
-
-                ctx.globalAlpha = 1.0;
-            }
         }
 
         // Create particle array (will be populated when experience starts)
         const particles = [];
-
-        // ============================================
-        // 3D ISOMETRIC PROJECTION SYSTEM
-        // ============================================
-
-        /**
-         * Project 3D coordinates to 2D true isometric view
-         * Uses classic isometric angles (30° from horizontal)
-         * @param {number} x - X coordinate in 3D space
-         * @param {number} y - Y coordinate in 3D space (vertical/height)
-         * @param {number} z - Z coordinate in 3D space (depth)
-         * @returns {Object} {x, y} - 2D screen coordinates
-         */
-        function projectIsometric(x, y, z) {
-            // True isometric projection formulas
-            // Classic isometric: 30° angle, orthographic projection
-            const isoX = (x - z) * CONFIG.ISO_SCALE;
-            const isoY = ((x + z) * 0.5 - y) * CONFIG.ISO_SCALE;
-
-            // Center on screen with offset
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2 + CONFIG.ISO_OFFSET_Y;
-
-            return {
-                x: centerX + isoX,
-                y: centerY + isoY,
-            };
-        }
-
-        /**
-         * Get depth for a 3D point (for proper rendering order)
-         * In isometric view, depth = x + y + z
-         */
-        function getDepth(x, y, z) {
-            return x + y + z;
-        }
 
         // ============================================
         // POOL SYSTEM FUNCTIONS
@@ -1020,86 +851,6 @@
 
                 ctx.globalAlpha = 1.0;
             });
-        }
-
-        /**
-         * Draw the pool in isometric 3D view
-         * Renders as a volumetric block composed of stacked layers
-         */
-        function drawPoolIsometric() {
-            if (poolLevel <= 0) return;
-
-            const blockSize = 20; // Size of each voxel block
-            const poolDepth = 100; // Depth of pool in 3D space
-
-            // Calculate pool dimensions in 3D space
-            const poolWidth = canvas.width;
-            const poolHeight = poolLevel;
-
-            // Draw pool as layers of blocks
-            const numLayersY = Math.ceil(poolHeight / blockSize);
-            const numBlocksX = Math.ceil(poolWidth / blockSize);
-            const numBlocksZ = Math.ceil(poolDepth / blockSize);
-
-            // Collect all blocks with their depths for sorting
-            const blocks = [];
-
-            for (let ly = 0; ly < numLayersY; ly++) {
-                for (let bx = 0; bx < numBlocksX; bx++) {
-                    for (let bz = 0; bz < numBlocksZ; bz++) {
-                        // 3D position of block
-                        const x3d = (bx * blockSize) - poolWidth / 2 + blockSize / 2;
-                        const y3d = -(canvas.height / 2 - poolHeight) + (ly * blockSize);
-                        const z3d = (bz * blockSize) - poolDepth / 2 + blockSize / 2;
-
-                        blocks.push({ x3d, y3d, z3d, layer: ly, indexX: bx, indexZ: bz });
-                    }
-                }
-            }
-
-            // Sort blocks by depth (painter's algorithm)
-            blocks.sort((a, b) => {
-                const depthA = getDepth(a.x3d, a.y3d, a.z3d);
-                const depthB = getDepth(b.x3d, b.y3d, b.z3d);
-                return depthA - depthB;
-            });
-
-            // Draw each block
-            blocks.forEach(block => {
-                const projected = projectIsometric(block.x3d, block.y3d, block.z3d);
-
-                // Color based on layer and position
-                const depthFactor = 0.6 + (block.layer / numLayersY) * 0.4;
-                const colorIndex = (block.indexX + block.indexZ + block.layer) % CONFIG.BAR_COLOR_PALETTE.length;
-                const baseColor = CONFIG.BAR_COLOR_PALETTE[colorIndex];
-
-                // Adjust brightness
-                const r = parseInt(baseColor.slice(1, 3), 16);
-                const g = parseInt(baseColor.slice(3, 5), 16);
-                const b = parseInt(baseColor.slice(5, 7), 16);
-
-                const newR = Math.round(r * depthFactor);
-                const newG = Math.round(g * depthFactor);
-                const newB = Math.round(b * depthFactor);
-
-                const adjustedColor = `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
-
-                // Draw isometric cube face (top, left, right)
-                const isoSize = blockSize * CONFIG.ISO_SCALE;
-
-                ctx.fillStyle = adjustedColor;
-                ctx.globalAlpha = 0.6;
-
-                // Draw simple square for each block (simplified for performance)
-                ctx.fillRect(
-                    projected.x - isoSize / 2,
-                    projected.y - isoSize / 2,
-                    isoSize,
-                    isoSize
-                );
-            });
-
-            ctx.globalAlpha = 1.0;
         }
 
         /**
@@ -1614,10 +1365,9 @@
             // Show loading message
             loading.classList.remove('hidden');
 
-            // Show back button, camera toggle, and 3D toggle
+            // Show back button and camera toggle
             backButton.classList.add('visible');
             cameraToggle.classList.add('visible');
-            isoToggle.classList.add('visible');
 
             // Show mode selector
             modeSelector.classList.remove('hidden');
@@ -1681,10 +1431,9 @@
             // Show home screen
             homeScreen.classList.remove('hidden');
 
-            // Hide back button, camera toggle, 3D toggle, and mode selector
+            // Hide back button, camera toggle, and mode selector
             backButton.classList.remove('visible');
             cameraToggle.classList.remove('visible');
-            isoToggle.classList.remove('visible');
             modeSelector.classList.add('hidden');
 
             // Hide loading and instructions
@@ -1694,10 +1443,6 @@
             // Reset camera background
             showCameraBackground = false;
             cameraToggle.classList.remove('active');
-
-            // Reset isometric mode
-            isometricMode = false;
-            isoToggle.classList.remove('active');
 
             // Reset hand interaction
             handInteractionEnabled = false;
@@ -1812,34 +1557,15 @@
             applyHandForces();
 
             // Update and draw all particles
-            if (isometricMode) {
-                // In 3D mode, sort particles by depth for proper rendering
-                const particlesWithDepth = particles.map(p => ({
-                    particle: p,
-                    depth: getDepth(p.x - canvas.width / 2, p.y - canvas.height / 2, 0)
-                }));
-                particlesWithDepth.sort((a, b) => a.depth - b.depth);
-
-                particlesWithDepth.forEach(({ particle }) => {
-                    particle.update();
-                    particle.drawIsometric();
-                });
-            } else {
-                // 2D mode - normal rendering
-                particles.forEach(particle => {
-                    particle.update();
-                    particle.draw();
-                });
-            }
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
 
             // Update and draw pool system (water mode only)
             if (currentMode === 'water') {
                 updateRipples();
-                if (isometricMode) {
-                    drawPoolIsometric();
-                } else {
-                    drawPool();
-                }
+                drawPool();
             }
         }
 
@@ -1879,16 +1605,6 @@
                 cameraToggle.classList.add('active');
             } else {
                 cameraToggle.classList.remove('active');
-            }
-        });
-
-        // 3D Isometric Mode Toggle
-        isoToggle.addEventListener('click', () => {
-            isometricMode = !isometricMode;
-            if (isometricMode) {
-                isoToggle.classList.add('active');
-            } else {
-                isoToggle.classList.remove('active');
             }
         });
 
