@@ -560,7 +560,7 @@
             PARTICLE_COLOR: '#4a9eff',      // Particle color (CSS color)
             PARTICLE_OPACITY: 0.6,          // Particle opacity (0-1)
             TRAIL_EFFECT: true,             // Enable motion blur trail effect
-            TRAIL_ALPHA: 0.15,              // Lower = longer trails (0-1)
+            TRAIL_ALPHA: 0.05,              // Lower = longer trails (0-1) - More elegant for light trails
 
             // Light Trail Visual Style (inspired by long exposure photography)
             TRAIL_WIDTH: 0.5,               // Thin line width
@@ -740,148 +740,171 @@
             }
 
             update() {
-                // Apply gravity
-                this.vy += CONFIG.GRAVITY;
+                // Mode-specific physics
+                if (currentMode === 'water') {
+                    // Water mode: simple gravity, falls straight down
+                    this.vy += CONFIG.WATER_GRAVITY;
+                    this.vx *= 0.98; // Minimal damping
 
-                // Apply velocity damping (reduces horizontal drift over time)
-                this.vx *= CONFIG.VELOCITY_DAMPING;
-                this.vy *= CONFIG.VELOCITY_DAMPING;
+                } else if (currentMode === 'wind') {
+                    // Wind mode: horizontal movement with wave pattern
+                    const time = Date.now() * 0.001;
+                    const waveOffset = Math.sin(this.y * CONFIG.WIND_WAVE_FREQUENCY + time) * CONFIG.WIND_WAVE_AMPLITUDE;
+                    this.x = this.baseX + waveOffset;
 
-                // Limit maximum velocity
-                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-                if (speed > CONFIG.MAX_VELOCITY) {
-                    this.vx = (this.vx / speed) * CONFIG.MAX_VELOCITY;
-                    this.vy = (this.vy / speed) * CONFIG.MAX_VELOCITY;
+                    // Continue horizontal motion
+                    this.y += this.vy;
+
+                } else if (currentMode === 'beam') {
+                    // Beam mode: rotating and dancing beams
+                    this.angle += this.angleVelocity;
+
+                    // Add subtle dance movement
+                    const danceX = Math.cos(Date.now() * 0.001 + this.angle) * CONFIG.BEAM_DANCE_AMPLITUDE;
+                    const danceY = Math.sin(Date.now() * 0.001 + this.angle) * CONFIG.BEAM_DANCE_AMPLITUDE;
+
+                    this.x += this.vx + danceX;
+                    this.y += this.vy + danceY;
                 }
 
-                // Update position
-                this.x += this.vx;
-                this.y += this.vy;
+                // Standard position update for water and beam modes
+                if (currentMode !== 'wind') {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                }
 
                 // Decay disturbance (gradually return to normal state)
-                this.disturbance *= CONFIG.BAR_DISTURBANCE_DECAY;
-                this.disturbanceX *= CONFIG.BAR_DISTURBANCE_DECAY;
+                this.disturbance *= CONFIG.DISTURBANCE_DECAY;
+                this.disturbanceX *= CONFIG.DISTURBANCE_DECAY;
 
-                // Calculate pool surface position
-                const poolSurfaceY = canvas.height - poolLevel;
+                // Check bounds and reset based on mode
+                if (currentMode === 'water') {
+                    // Water: check pool surface or bottom
+                    const poolSurfaceY = canvas.height - poolLevel;
+                    if (this.y >= poolSurfaceY && this.vy > 0) {
+                        const maxPoolHeight = canvas.height * CONFIG.POOL_MAX_HEIGHT_RATIO;
+                        if (poolLevel < maxPoolHeight) {
+                            poolLevel += CONFIG.POOL_ACCUMULATION_RATE;
+                        }
+                        ripples.push({
+                            x: this.x,
+                            y: poolSurfaceY,
+                            radius: 0,
+                            opacity: 1
+                        });
+                        this.reset();
+                    }
+                    if (this.y > canvas.height + 10) this.reset();
 
-                // Check if particle hits pool surface
-                if (this.y >= poolSurfaceY && this.vy > 0) {
-                    // Particle enters pool - add to pool level
-                    const maxPoolHeight = canvas.height * CONFIG.POOL_MAX_HEIGHT_RATIO;
-                    if (poolLevel < maxPoolHeight) {
-                        poolLevel += CONFIG.POOL_ACCUMULATION_RATE;
+                } else if (currentMode === 'wind') {
+                    // Wind: reset when off horizontal edges
+                    if ((this.baseX > 0 && this.baseX > canvas.width + 10) ||
+                        (this.baseX < 0 && this.baseX < -10)) {
+                        this.reset();
                     }
 
-                    // Create ripple at impact point
-                    ripples.push({
-                        x: this.x,
-                        y: poolSurfaceY,
-                        radius: 0,
-                        opacity: 1
-                    });
-
-                    // Reset particle to top
-                    this.reset();
+                } else if (currentMode === 'beam') {
+                    // Beam: reset when far from center or off screen
+                    const distFromCenter = Math.sqrt(
+                        Math.pow(this.x - canvas.width/2, 2) +
+                        Math.pow(this.y - canvas.height/2, 2)
+                    );
+                    if (distFromCenter > Math.max(canvas.width, canvas.height) ||
+                        this.x < -50 || this.x > canvas.width + 50 ||
+                        this.y < -50 || this.y > canvas.height + 50) {
+                        this.reset();
+                    }
                 }
-
-                // Recycle particle if it goes off the bottom (safety fallback)
-                if (this.y > canvas.height + 10) {
-                    this.reset();
-                }
-
-                // Wrap horizontally if particle goes too far off screen
-                if (this.x < -50) this.x = canvas.width + 50;
-                if (this.x > canvas.width + 50) this.x = -50;
             }
 
             draw() {
-                // Don't draw particles that are below the pool surface
-                const poolSurfaceY = canvas.height - poolLevel;
-                if (this.y >= poolSurfaceY) return;
+                // Don't draw particles in pool (water mode only)
+                if (currentMode === 'water') {
+                    const poolSurfaceY = canvas.height - poolLevel;
+                    if (this.y >= poolSurfaceY) return;
+                }
 
-                // Apply disturbance effects
-                const lateralOffset = this.disturbanceX;
-                const heightMultiplier = 1 + (this.disturbance * 0.5); // Elongate when disturbed
-                const brightnessBoost = this.disturbance * 0.4; // Brighten when disturbed
-
-                // Calculate final bar dimensions
-                const finalBarHeight = this.baseBarHeight * heightMultiplier;
+                // Calculate final brightness with disturbance boost
+                const brightnessBoost = this.disturbance * 0.3;
                 const finalBrightness = Math.min(1, this.brightness + brightnessBoost);
 
-                // Snap to grid for structured alignment
-                const gridSnap = CONFIG.BAR_GRID_SNAP;
-                const drawX = Math.round(this.x / gridSnap) * gridSnap + lateralOffset;
-                const drawY = this.y;
+                // Calculate trail direction and length based on velocity
+                let trailEndX, trailEndY;
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
 
-                // Get color from palette and apply brightness
-                const baseColor = CONFIG.BAR_COLOR_PALETTE[this.colorIndex];
-                const adjustedColor = this.adjustBrightness(baseColor, finalBrightness);
+                if (speed > 0.1) {
+                    // Draw trail in direction opposite to motion
+                    const trailFactor = Math.min(speed / 5, 1); // Normalize speed
+                    const effectiveLength = this.trailLength * trailFactor;
 
-                // Draw rectangular bar
-                ctx.fillStyle = adjustedColor;
-                ctx.globalAlpha = CONFIG.PARTICLE_OPACITY;
-                ctx.fillRect(
-                    drawX - this.barWidth / 2,
-                    drawY - finalBarHeight / 2,
-                    this.barWidth,
-                    finalBarHeight
-                );
+                    trailEndX = this.x - (this.vx / speed) * effectiveLength;
+                    trailEndY = this.y - (this.vy / speed) * effectiveLength;
+                } else {
+                    // Stationary - draw short vertical line
+                    trailEndX = this.x;
+                    trailEndY = this.y + 10;
+                }
+
+                // Apply disturbance lateral offset
+                const offsetX = this.disturbanceX;
+
+                // Draw elegant thin line (light trail)
+                ctx.strokeStyle = CONFIG.TRAIL_BASE_COLOR;
+                ctx.globalAlpha = CONFIG.TRAIL_OPACITY_BASE * finalBrightness;
+                ctx.lineWidth = CONFIG.TRAIL_WIDTH;
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                ctx.moveTo(this.x + offsetX, this.y);
+                ctx.lineTo(trailEndX + offsetX, trailEndY);
+                ctx.stroke();
+
                 ctx.globalAlpha = 1.0;
             }
 
-            // Helper function to adjust color brightness
-            adjustBrightness(hexColor, brightness) {
-                // Convert hex to RGB
-                const r = parseInt(hexColor.slice(1, 3), 16);
-                const g = parseInt(hexColor.slice(3, 5), 16);
-                const b = parseInt(hexColor.slice(5, 7), 16);
-
-                // Apply brightness
-                const newR = Math.round(r * brightness);
-                const newG = Math.round(g * brightness);
-                const newB = Math.round(b * brightness);
-
-                // Convert back to hex
-                return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
-            }
-
-            // Draw in 3D isometric mode
+            // Draw in 3D isometric mode (simplified for light trails)
             drawIsometric() {
-                // Don't draw particles that are below the pool surface
-                const poolSurfaceY = canvas.height - poolLevel;
-                if (this.y >= poolSurfaceY) return;
+                if (currentMode === 'water') {
+                    const poolSurfaceY = canvas.height - poolLevel;
+                    if (this.y >= poolSurfaceY) return;
+                }
 
-                // Map 2D screen position to 3D world space
-                // The waterfall is a vertical plane facing the camera
-                const x3d = this.x - canvas.width / 2;    // Horizontal position
-                const y3d = -(this.y - canvas.height / 2); // Vertical position (inverted for proper orientation)
-                const z3d = 0;  // Depth = 0 (waterfall is a flat plane)
+                // Map to 3D space
+                const x3d = this.x - canvas.width / 2;
+                const y3d = -(this.y - canvas.height / 2);
+                const z3d = 0;
 
-                // Project to true isometric 2D
+                // Project to isometric 2D
                 const projected = projectIsometric(x3d, y3d, z3d);
 
-                // Apply disturbance effects (same as 2D)
-                const lateralOffset = this.disturbanceX * CONFIG.ISO_SCALE;
-                const heightMultiplier = 1 + (this.disturbance * 0.5);
-                const brightnessBoost = this.disturbance * 0.4;
+                // Calculate trail end in 3D
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                let trailEnd3d;
 
-                const finalBarHeight = this.baseBarHeight * heightMultiplier;
-                const finalBrightness = Math.min(1, this.brightness + brightnessBoost);
+                if (speed > 0.1) {
+                    const trailFactor = Math.min(speed / 5, 1);
+                    const effectiveLength = this.trailLength * trailFactor;
 
-                // Get color and apply brightness
-                const baseColor = CONFIG.BAR_COLOR_PALETTE[this.colorIndex];
-                const adjustedColor = this.adjustBrightness(baseColor, finalBrightness);
+                    const endX3d = x3d - (this.vx / speed) * effectiveLength;
+                    const endY3d = y3d + (this.vy / speed) * effectiveLength;
+                    trailEnd3d = projectIsometric(endX3d, endY3d, 0);
+                } else {
+                    trailEnd3d = { x: projected.x, y: projected.y + 10 };
+                }
 
-                // Draw rectangular bar in isometric view
-                ctx.fillStyle = adjustedColor;
-                ctx.globalAlpha = CONFIG.PARTICLE_OPACITY;
-                ctx.fillRect(
-                    projected.x - this.barWidth / 2 + lateralOffset,
-                    projected.y - finalBarHeight / 2,
-                    this.barWidth,
-                    finalBarHeight
-                );
+                // Draw light trail in isometric view
+                const finalBrightness = Math.min(1, this.brightness + this.disturbance * 0.3);
+
+                ctx.strokeStyle = CONFIG.TRAIL_BASE_COLOR;
+                ctx.globalAlpha = CONFIG.TRAIL_OPACITY_BASE * finalBrightness;
+                ctx.lineWidth = CONFIG.TRAIL_WIDTH;
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                ctx.moveTo(projected.x, projected.y);
+                ctx.lineTo(trailEnd3d.x, trailEnd3d.y);
+                ctx.stroke();
+
                 ctx.globalAlpha = 1.0;
             }
         }
@@ -1594,8 +1617,11 @@
             cameraToggle.classList.add('visible');
             isoToggle.classList.add('visible');
 
+            // Show mode selector
+            modeSelector.classList.remove('hidden');
+
             // Set instructions
-            instructions.textContent = 'Move your hands to interact with the waterfall';
+            instructions.textContent = 'Move your hands to interact';
 
             // Create particles
             for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
@@ -1653,10 +1679,11 @@
             // Show home screen
             homeScreen.classList.remove('hidden');
 
-            // Hide back button, camera toggle, and 3D toggle
+            // Hide back button, camera toggle, 3D toggle, and mode selector
             backButton.classList.remove('visible');
             cameraToggle.classList.remove('visible');
             isoToggle.classList.remove('visible');
+            modeSelector.classList.add('hidden');
 
             // Hide loading and instructions
             loading.classList.add('hidden');
@@ -1859,6 +1886,30 @@
             } else {
                 isoToggle.classList.remove('active');
             }
+        });
+
+        // Mode switching (Water, Wind, Beam)
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const newMode = btn.dataset.mode;
+                if (newMode === currentMode) return; // Already in this mode
+
+                // Update current mode
+                currentMode = newMode;
+
+                // Update button states
+                modeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Reset all particles to new mode
+                particles.forEach(p => p.reset());
+
+                // Reset pool for water mode
+                if (currentMode === 'water') {
+                    poolLevel = 0;
+                    ripples = [];
+                }
+            });
         });
 
         // ============================================
